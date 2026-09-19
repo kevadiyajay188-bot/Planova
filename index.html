@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planova - Campus Club Hub</title>
+  <meta name="description" content="Planova is the AI-powered campus club event management platform. Plan events, coordinate venues, manage volunteers — all in one place.">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: { brand: '#000000' }
+        }
+      }
+    }
+  </script>
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       PLANOVA — Design System: Black & White Theme
+       ══════════════════════════════════════════════════════════ */
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --black:        #0A0A0A;
+      --near-black:   #111111;
+      --dark-1:       #1A1A1A;
+      --dark-2:       #2A2A2A;
+      --gray-500:     #6B6B6B;
+      --gray-300:     #C8C8C8;
+      --gray-100:     #F0F0F0;
+      --near-white:   #F8F8F8;
+      --white:        #FFFFFF;
+    }
+
+    body { font-family: 'Inter', system-ui, sans-serif; }
+
+    /* ── Left panel noise texture overlay ── */
+    .panel-dark::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 60% 50% at 80% 10%, rgba(255,255,255,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 20% 90%, rgba(255,255,255,0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Grid dot pattern ── */
+    .panel-dark::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       LIQUID GLASS BUTTON SYSTEM — B&W Edition
+       ══════════════════════════════════════════════════════════ */
+
+    /* Base token — white glass (for use on dark backgrounds) */
+    .glass-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      text-decoration: none;
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
+      /* Glass surface */
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.45),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.08),
+        0 4px 16px rgba(0, 0, 0, 0.25);
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      transition:
+        background 200ms ease,
+        box-shadow 200ms ease,
+        transform 200ms ease,
+        opacity 200ms ease;
+    }
+
+    /* PRIMARY — deep black glass (on white/light backgrounds) */
+    .glass-btn--primary {
+      background: linear-gradient(135deg, rgba(10,10,10,0.88), rgba(30,30,30,0.75));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.18),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.3),
+        0 4px 20px rgba(0, 0, 0, 0.22);
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+
+    /* PRIMARY on DARK (left panel / dark bgs) */
+    .glass-btn--primary-light {
+      background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08));
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.5),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+        0 4px 20px rgba(0, 0, 0, 0.35);
+      color: #ffffff;
+    }
+
+    /* SECONDARY / ghost */
+    .glass-btn--secondary {
+      background: rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      color: var(--near-black);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+      text-shadow: none;
+    }
+
+    /* HOVER */
+    .glass-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+    .glass-btn--primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(10,10,10,0.96), rgba(30,30,30,0.88));
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.22),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35),
+        0 8px 28px rgba(0, 0, 0, 0.30);
+    }
+    .glass-btn--primary-light:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.14));
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.6),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.06),
+        0 8px 28px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ACTIVE / pressed */
+    .glass-btn:active:not(:disabled) {
+      transform: scale(0.97) translateY(0);
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        inset 0 2px 6px rgba(0, 0, 0, 0.25),
+        0 1px 4px rgba(0, 0, 0, 0.12);
+      transition-duration: 80ms;
+    }
+
+    /* FOCUS */
+    .glass-btn:focus-visible {
+      outline: 2px solid #000000;
+      outline-offset: 2px;
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.3),
+        0 0 0 4px rgba(0, 0, 0, 0.12);
+    }
+
+    /* DISABLED */
+    .glass-btn:disabled,
+    .glass-btn[aria-disabled="true"] {
+      opacity: 0.35;
+      cursor: not-allowed;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transform: none;
+      pointer-events: none;
+    }
+
+    /* Modifiers */
+    .glass-btn--pill  { border-radius: 999px; padding: 0.625rem 1.5rem; }
+    .glass-btn--full  { width: 100%; }
+    .glass-btn--lg    { padding: 0.75rem 1.75rem; font-size: 0.9375rem; border-radius: 14px; }
+
+    /* Fallback */
+    @supports not (backdrop-filter: blur(1px)) {
+      .glass-btn             { background: rgba(40, 40, 40, 0.85); }
+      .glass-btn--primary    { background: #0A0A0A; }
+      .glass-btn--primary-light { background: rgba(255,255,255,0.2); }
+      .glass-btn--secondary  { background: rgba(0,0,0,0.08); color: #0A0A0A; }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .glass-btn { transition: opacity 150ms ease; }
+      .glass-btn:hover:not(:disabled),
+      .glass-btn:active:not(:disabled) { transform: none; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FORM ELEMENTS — B&W
+       ══════════════════════════════════════════════════════════ */
+    .planova-input {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border-radius: 10px;
+      border: 1.5px solid #E0E0E0;
+      background: #FFFFFF;
+      font-size: 0.875rem;
+      color: #0A0A0A;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .planova-input::placeholder { color: #ADADAD; }
+    .planova-input:focus {
+      border-color: #0A0A0A;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+    }
+    .planova-input--error {
+      border-color: #DC2626;
+    }
+    .planova-input--error:focus {
+      border-color: #DC2626;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.10);
+    }
+
+    .planova-select {
+      width: 100%;
+      padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+      border-radius: 10px;
+      border: 1.5px solid #E0E0E0;
+      background: #FFFFFF;
+      font-size: 0.875rem;
+      color: #0A0A0A;
+      font-family: inherit;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+      cursor: pointer;
+    }
+    .planova-select:focus {
+      border-color: #0A0A0A;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+    }
+    .planova-select--error { border-color: #DC2626; }
+    .planova-select--placeholder { color: #ADADAD; }
+
+    /* ── Tab system ── */
+    .auth-tab {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #9A9A9A;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: color 150ms ease;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+    }
+    .auth-tab:hover { color: #0A0A0A; }
+    .auth-tab--active {
+      color: #0A0A0A;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .auth-tab--active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 2px;
+      background: #0A0A0A;
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* ── Label ── */
+    .form-label {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4A4A4A;
+      margin-bottom: 0.375rem;
+    }
+
+    /* ── Feature pill (left panel) ── */
+    .feature-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.875rem 0.5rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      font-size: 0.8125rem;
+      color: rgba(255,255,255,0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .feature-pill-icon {
+      width: 1.5rem; height: 1.5rem;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Logo image in dark panel — invert to white ── */
+    .logo-dark { filter: invert(1) brightness(10); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #F0F0F0; }
+    ::-webkit-scrollbar-thumb { background: #C0C0C0; border-radius: 3px; }
+  </style>
+</head>
+
+<body class="antialiased" style="background:#0A0A0A;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Mock /api/auth/* for standalone preview
+    const originalFetch = window.fetch;
+    window.fetch = async (url, options) => {
+      if (typeof url === 'string' && url.startsWith('/api/auth/')) {
+        await new Promise(res => setTimeout(res, 800));
+        const body = options && options.body ? JSON.parse(options.body) : {};
+        if (url === '/api/auth/login') {
+          if (body.username === 'error') return { ok: false, json: async () => ({ message: 'Invalid username or password. Please try again.' }) };
+          return { ok: true, json: async () => ({ token: 'mock-jwt-token-xyz123', message: 'Signed in successfully!' }) };
+        }
+        if (url === '/api/auth/signup') {
+          if (body.email === 'taken@campus.edu') return { ok: false, json: async () => ({ message: 'An account with this email already exists.' }) };
+          return { ok: true, json: async () => ({ token: 'mock-signup-token-abc789', message: 'Account created!' }) };
+        }
+      }
+      return originalFetch(url, options);
+    };
+
+    function AuthPage() {
+      const [activeTab, setActiveTab] = useState('signin');
+
+      // Sign In state
+      const [signInData, setSignInData] = useState({ username: '', password: '' });
+      const [showSignInPassword, setShowSignInPassword] = useState(false);
+      const [touchedSignIn, setTouchedSignIn] = useState({ username: false, password: false });
+
+      // Sign Up state
+      const [signUpData, setSignUpData] = useState({ email: '', username: '', role: '', password: '', confirmPassword: '' });
+      const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [touchedSignUp, setTouchedSignUp] = useState({ email: false, username: false, role: false, password: false, confirmPassword: false });
+
+      // Request state
+      const [isLoading, setIsLoading] = useState(false);
+      const [apiError, setApiError] = useState(null);
+      const [apiSuccess, setApiSuccess] = useState(null);
+
+      const handleTabChange = (tab) => { setActiveTab(tab); setApiError(null); setApiSuccess(null); };
+
+      // Validation
+      const validateEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+      const getSignInErrors = () => {
+        const e = {};
+        if (!signInData.username.trim()) e.username = 'Username is required';
+        if (!signInData.password) e.password = 'Password is required';
+        return e;
+      };
+      const getSignUpErrors = () => {
+        const e = {};
+        if (!signUpData.email.trim()) e.email = 'Email is required';
+        else if (!validateEmail(signUpData.email.trim())) e.email = 'Please enter a valid email address';
+        if (!signUpData.username.trim()) e.username = 'Username is required';
+        else if (signUpData.username.trim().length < 3) e.username = 'Username must be at least 3 characters';
+        if (!signUpData.role) e.role = 'Please select a role';
+        if (!signUpData.password) e.password = 'Password is required';
+        else if (signUpData.password.length < 8) e.password = 'Password must be at least 8 characters';
+        if (!signUpData.confirmPassword) e.confirmPassword = 'Confirm password is required';
+        else if (signUpData.confirmPassword !== signUpData.password) e.confirmPassword = 'Passwords do not match';
+        return e;
+      };
+
+      const signInErrors = getSignInErrors();
+      const signUpErrors = getSignUpErrors();
+      const isSignInValid = signInData.username.trim().length > 0 && signInData.password.length > 0 && Object.keys(signInErrors).length === 0;
+      const isSignUpValid = signUpData.email.trim().length > 0 && validateEmail(signUpData.email.trim()) && signUpData.username.trim().length >= 3 && signUpData.role !== '' && signUpData.password.length >= 8 && signUpData.confirmPassword === signUpData.password && Object.keys(signUpErrors).length === 0;
+
+      // Handlers
+      const handleSignInChange = (e) => { const {name,value}=e.target; setSignInData(p=>({...p,[name]:value})); };
+      const handleSignInBlur = (f) => setTouchedSignIn(p=>({...p,[f]:true}));
+      const handleSignUpChange = (e) => { const {name,value}=e.target; setSignUpData(p=>({...p,[name]:value})); };
+      const handleSignUpBlur = (f) => setTouchedSignUp(p=>({...p,[f]:true}));
+
+      const handleSignInSubmit = async (e) => {
+        e.preventDefault();
+        setTouchedSignIn({ username: true, password: true });
+        if (!isSignInValid || isLoading) return;
+        setIsLoading(true); setApiError(null); setApiSuccess(null);
+        try {
+          const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: signInData.username.trim(), password: signInData.password }) });
+          const data = await res.json().catch(()=>({}));
+          if (!res.ok) throw new Error(data.message || 'Failed to sign in.');
+          if (data.token) localStorage.setItem('token', data.token);
+          setApiSuccess('Signed in successfully! Redirecting…');
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
+        } catch (err) {
+          setApiError(err.message || 'An error occurred. Please try again.');
+        } finally { setIsLoading(false); }
+      };
+
+      const handleSignUpSubmit = async (e) => {
+        e.preventDefault();
+        setTouchedSignUp({ email:true, username:true, role:true, password:true, confirmPassword:true });
+        if (!isSignUpValid || isLoading) return;
+        setIsLoading(true); setApiError(null); setApiSuccess(null);
+        try {
+          const res = await fetch('/api/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: signUpData.email.trim(), username: signUpData.username.trim(), role: signUpData.role, password: signUpData.password }) });
+          const data = await res.json().catch(()=>({}));
+          if (!res.ok) throw new Error(data.message || 'Registration failed.');
+          if (data.token) localStorage.setItem('token', data.token);
+          setApiSuccess('Account created! Redirecting…');
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
+        } catch (err) {
+          setApiError(err.message || 'An error occurred. Please try again.');
+        } finally { setIsLoading(false); }
+      };
+
+      // Spinner SVG
+      const Spinner = () => (
+        <svg className="animate-spin -ml-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+        </svg>
+      );
+
+      // Eye toggle icons
+      const EyeOff = () => <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>;
+      const EyeOn  = () => <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>;
+
+      // Reusable password field
+      const PasswordField = ({ id, name, value, onChange, onBlur, placeholder, show, onToggle, error, touched, label, autoComplete }) => (
+        <div>
+          <label htmlFor={id} className="form-label">{label}</label>
+          <div className="relative">
+            <input
+              id={id} name={name} type={show ? 'text' : 'password'}
+              autoComplete={autoComplete || 'current-password'}
+              value={value} onChange={onChange} onBlur={onBlur}
+              placeholder={placeholder}
+              className={`planova-input pr-10 ${touched && error ? 'planova-input--error' : ''}`}
+            />
+            <button type="button" onClick={onToggle}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none transition-colors"
+              aria-label={show ? 'Hide password' : 'Show password'}>
+              {show ? <EyeOff/> : <EyeOn/>}
+            </button>
+          </div>
+          {touched && error && <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>}
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen w-full flex flex-col lg:flex-row font-sans antialiased" style={{background:'#0A0A0A'}}>
+
+          {/* ── LEFT PANEL: Dark, with logo and value props ── */}
+          <div className="panel-dark hidden lg:flex lg:w-[52%] xl:w-1/2 flex-col justify-between relative overflow-hidden select-none"
+               style={{background:'linear-gradient(145deg, #000000 0%, #111111 60%, #0D0D0D 100%)', padding:'3rem 3.5rem'}}>
+
+            {/* Brand / logo — top */}
+            <div className="relative z-10">
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="planova-logo.jpg"
+                  alt="Planova logo"
+                  className="logo-dark"
+                  style={{height:'44px', width:'44px', objectFit:'contain'}}
+                />
+                <div>
+                  <span style={{fontSize:'1.375rem', fontWeight:800, color:'#FFFFFF', letterSpacing:'-0.02em', lineHeight:1}}>
+                    Planova
+                  </span>
+                  <p style={{fontSize:'0.6875rem', color:'rgba(255,255,255,0.4)', letterSpacing:'0.12em', textTransform:'uppercase', marginTop:'2px', fontWeight:500}}>
+                    Campus Club Hub
+                  </p>
+                </div>
+              </div>
+
+              {/* Live badge */}
+              <div style={{marginTop:'2rem'}}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
+                     style={{background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', fontSize:'0.6875rem', color:'rgba(255,255,255,0.6)', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600}}>
+                  <span style={{width:'7px', height:'7px', borderRadius:'50%', background:'#22C55E', display:'inline-block', animation:'pulse 2s infinite'}}></span>
+                  AI-Powered Platform
+                </div>
+              </div>
+            </div>
+
+            {/* Middle: headline */}
+            <div className="relative z-10" style={{maxWidth:'420px', margin:'auto 0'}}>
+              <h1 style={{fontSize:'clamp(2.25rem, 3.5vw, 3rem)', fontWeight:900, color:'#FFFFFF', lineHeight:1.08, letterSpacing:'-0.04em', marginBottom:'1.25rem'}}>
+                Plan the event.
+                <br/>
+                <span style={{color:'rgba(255,255,255,0.45)'}}>Planova runs</span>
+                <br/>
+                <span style={{color:'rgba(255,255,255,0.45)'}}>the rest.</span>
+              </h1>
+
+              <p style={{fontSize:'1rem', color:'rgba(255,255,255,0.5)', lineHeight:1.65, marginBottom:'2.5rem', fontWeight:400}}>
+                Empower your college club with seamless AI scheduling,
+                intelligent budget allocation, and volunteer rosters —
+                all in one unified campus hub.
+              </p>
+
+              {/* Feature pills */}
+              <div style={{display:'flex', flexDirection:'column', gap:'0.625rem'}}>
+                {[
+                  { icon: '📍', text: 'Automated campus venue & slot coordination' },
+                  { icon: '🤝', text: 'Smart duty delegation for Core Team & Volunteers' },
+                  { icon: '📊', text: 'Instant RSVP analytics & club reporting' },
+                ].map((f,i) => (
+                  <div key={i} className="feature-pill">
+                    <div className="feature-pill-icon" style={{fontSize:'0.875rem'}}>{f.icon}</div>
+                    <span>{f.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom: logo large watermark + footer */}
+            <div className="relative z-10">
+              <p style={{fontSize:'0.6875rem', color:'rgba(255,255,255,0.25)', letterSpacing:'0.04em'}}>
+                © {new Date().getFullYear()} Planova Platform · Designed for collegiate student leaders
+              </p>
+            </div>
+
+            {/* Decorative large logo watermark */}
+            <div style={{position:'absolute', right:'-60px', bottom:'-60px', opacity:'0.03', pointerEvents:'none', zIndex:0}}>
+              <img src="planova-logo.jpg" alt="" aria-hidden="true" className="logo-dark" style={{width:'420px', height:'420px', objectFit:'contain'}}/>
+            </div>
+          </div>
+
+          {/* ── RIGHT PANEL: White, auth card ── */}
+          <div className="flex-1 flex flex-col justify-center items-center min-h-screen"
+               style={{background:'#FAFAFA', padding:'2rem 1.5rem'}}>
+
+            {/* Mobile header */}
+            <div className="lg:hidden w-full mb-6 text-center" style={{maxWidth:'420px'}}>
+              <div className="inline-flex items-center gap-2.5 mb-1.5">
+                <img src="planova-logo.jpg" alt="Planova" style={{height:'36px', width:'36px', objectFit:'contain'}}/>
+                <span style={{fontSize:'1.375rem', fontWeight:800, color:'#0A0A0A', letterSpacing:'-0.025em'}}>Planova</span>
+              </div>
+              <p style={{fontSize:'0.8125rem', color:'#7A7A7A', fontWeight:500}}>Campus Club Hub</p>
+            </div>
+
+            {/* Auth card */}
+            <div style={{width:'100%', maxWidth:'420px', background:'#FFFFFF', borderRadius:'20px', border:'1px solid #E8E8E8', boxShadow:'0 4px 32px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)', padding:'2.25rem 2rem'}}>
+
+              {/* Welcome text */}
+              <div style={{marginBottom:'1.75rem'}}>
+                <h2 style={{fontSize:'1.375rem', fontWeight:800, color:'#0A0A0A', letterSpacing:'-0.025em', marginBottom:'0.25rem'}}>
+                  {activeTab === 'signin' ? 'Welcome back' : 'Create your account'}
+                </h2>
+                <p style={{fontSize:'0.8125rem', color:'#8A8A8A', fontWeight:400}}>
+                  {activeTab === 'signin' ? 'Sign in to your Planova workspace.' : 'Join your campus club on Planova.'}
+                </p>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex" style={{borderBottom:'1px solid #EBEBEB', marginBottom:'1.75rem'}}>
+                <button type="button" id="tab-signin"
+                  onClick={() => handleTabChange('signin')}
+                  className={`auth-tab ${activeTab==='signin' ? 'auth-tab--active' : ''}`}>
+                  Sign In
+                </button>
+                <button type="button" id="tab-signup"
+                  onClick={() => handleTabChange('signup')}
+                  className={`auth-tab ${activeTab==='signup' ? 'auth-tab--active' : ''}`}>
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Success banner */}
+              {apiSuccess && (
+                <div role="alert" style={{marginBottom:'1.25rem', padding:'0.75rem 1rem', borderRadius:'10px', background:'#F0FDF4', border:'1px solid #BBF7D0', display:'flex', alignItems:'flex-start', gap:'0.625rem'}}>
+                  <svg style={{width:'16px',height:'16px',color:'#16A34A',flexShrink:0,marginTop:'1px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span style={{fontSize:'0.8125rem', color:'#15803D', fontWeight:500}}>{apiSuccess}</span>
+                </div>
+              )}
+
+              {/* Error banner */}
+              {apiError && (
+                <div id="api-error-banner" role="alert" style={{marginBottom:'1.25rem', padding:'0.75rem 1rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', display:'flex', alignItems:'flex-start', gap:'0.625rem'}}>
+                  <svg style={{width:'16px',height:'16px',color:'#DC2626',flexShrink:0,marginTop:'1px'}} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                  </svg>
+                  <span style={{fontSize:'0.8125rem', color:'#B91C1C', fontWeight:500}}>{apiError}</span>
+                </div>
+              )}
+
+              {/* ── SIGN IN FORM ── */}
+              {activeTab === 'signin' && (
+                <form onSubmit={handleSignInSubmit} noValidate style={{display:'flex', flexDirection:'column', gap:'1.125rem'}}>
+                  {/* Username */}
+                  <div>
+                    <label htmlFor="signin-username" className="form-label">Username</label>
+                    <input
+                      id="signin-username" name="username" type="text" autoComplete="username"
+                      value={signInData.username} onChange={handleSignInChange}
+                      onBlur={() => handleSignInBlur('username')}
+                      placeholder="Enter your username"
+                      className={`planova-input ${touchedSignIn.username && signInErrors.username ? 'planova-input--error' : ''}`}
+                    />
+                    {touchedSignIn.username && signInErrors.username && (
+                      <p id="error-signin-username" className="text-xs text-red-600 mt-1 font-medium">{signInErrors.username}</p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.375rem'}}>
+                      <label htmlFor="signin-password" className="form-label" style={{marginBottom:0}}>Password</label>
+                      <a href="#forgot-password"
+                        onClick={e=>{e.preventDefault();alert('Password reset instructions will be sent to your registered email.');}}
+                        style={{fontSize:'0.75rem', fontWeight:600, color:'#4A4A4A', textDecoration:'none'}}
+                        onMouseOver={e=>e.target.style.color='#0A0A0A'} onMouseOut={e=>e.target.style.color='#4A4A4A'}>
+                        Forgot password?
+                      </a>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="signin-password" name="password"
+                        type={showSignInPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        value={signInData.password} onChange={handleSignInChange}
+                        onBlur={() => handleSignInBlur('password')}
+                        placeholder="Enter your password"
+                        className={`planova-input pr-10 ${touchedSignIn.password && signInErrors.password ? 'planova-input--error' : ''}`}
+                      />
+                      <button type="button" id="toggle-signin-password"
+                        onClick={() => setShowSignInPassword(!showSignInPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none transition-colors"
+                        aria-label={showSignInPassword ? 'Hide password' : 'Show password'}>
+                        {showSignInPassword ? <EyeOff/> : <EyeOn/>}
+                      </button>
+                    </div>
+                    {touchedSignIn.password && signInErrors.password && (
+                      <p id="error-signin-password" className="text-xs text-red-600 mt-1 font-medium">{signInErrors.password}</p>
+                    )}
+                  </div>
+
+                  {/* Submit */}
+                  <div style={{paddingTop:'0.25rem'}}>
+                    <button type="submit" id="btn-signin-submit"
+                      disabled={!isSignInValid || isLoading}
+                      className="glass-btn glass-btn--primary glass-btn--full glass-btn--lg">
+                      {isLoading ? <><Spinner/>Signing in…</> : 'Sign In'}
+                    </button>
+                  </div>
+
+                  <p style={{textAlign:'center', fontSize:'0.8rem', color:'#8A8A8A'}}>
+                    Don't have an account?{' '}
+                    <button type="button" id="switch-to-signup" onClick={() => handleTabChange('signup')}
+                      style={{fontWeight:700, color:'#0A0A0A', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontSize:'inherit'}}>
+                      Sign Up
+                    </button>
+                  </p>
+                </form>
+              )}
+
+              {/* ── SIGN UP FORM ── */}
+              {activeTab === 'signup' && (
+                <form onSubmit={handleSignUpSubmit} noValidate style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                  {/* Email */}
+                  <div>
+                    <label htmlFor="signup-email" className="form-label">Email</label>
+                    <input
+                      id="signup-email" name="email" type="email" autoComplete="email"
+                      value={signUpData.email} onChange={handleSignUpChange}
+                      onBlur={() => handleSignUpBlur('email')}
+                      placeholder="name@campus.edu"
+                      className={`planova-input ${touchedSignUp.email && signUpErrors.email ? 'planova-input--error' : ''}`}
+                    />
+                    {touchedSignUp.email && signUpErrors.email && (
+                      <p id="error-signup-email" className="text-xs text-red-600 mt-1 font-medium">{signUpErrors.email}</p>
+                    )}
+                  </div>
+
+                  {/* Username */}
+                  <div>
+                    <label htmlFor="signup-username" className="form-label">Username</label>
+                    <input
+                      id="signup-username" name="username" type="text" autoComplete="username"
+                      value={signUpData.username} onChange={handleSignUpChange}
+                      onBlur={() => handleSignUpBlur('username')}
+                      placeholder="Min 3 characters"
+                      className={`planova-input ${touchedSignUp.username && signUpErrors.username ? 'planova-input--error' : ''}`}
+                    />
+                    {touchedSignUp.username && signUpErrors.username && (
+                      <p id="error-signup-username" className="text-xs text-red-600 mt-1 font-medium">{signUpErrors.username}</p>
+                    )}
+                  </div>
+
+                  {/* Role */}
+                  <div>
+                    <label htmlFor="signup-role" className="form-label">Role</label>
+                    <div className="relative">
+                      <select
+                        id="signup-role" name="role"
+                        value={signUpData.role} onChange={handleSignUpChange}
+                        onBlur={() => handleSignUpBlur('role')}
+                        className={`planova-select ${!signUpData.role ? 'planova-select--placeholder' : ''} ${touchedSignUp.role && signUpErrors.role ? 'planova-select--error' : ''}`}
+                      >
+                        <option value="" disabled>Select your club role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Core Team">Core Team</option>
+                        <option value="Volunteer">Volunteer</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </div>
+                    </div>
+                    {touchedSignUp.role && signUpErrors.role && (
+                      <p id="error-signup-role" className="text-xs text-red-600 mt-1 font-medium">{signUpErrors.role}</p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <PasswordField
+                    id="signup-password" name="password" label="Password"
+                    value={signUpData.password} onChange={handleSignUpChange}
+                    onBlur={() => handleSignUpBlur('password')}
+                    placeholder="Min 8 characters"
+                    show={showSignUpPassword} onToggle={() => setShowSignUpPassword(!showSignUpPassword)}
+                    error={signUpErrors.password} touched={touchedSignUp.password}
+                    autoComplete="new-password"
+                  />
+                  {touchedSignUp.password && signUpErrors.password && (
+                    <p id="error-signup-password" className="text-xs text-red-600 -mt-3 font-medium">{signUpErrors.password}</p>
+                  )}
+
+                  {/* Confirm Password */}
+                  <PasswordField
+                    id="signup-confirmpassword" name="confirmPassword" label="Confirm Password"
+                    value={signUpData.confirmPassword} onChange={handleSignUpChange}
+                    onBlur={() => handleSignUpBlur('confirmPassword')}
+                    placeholder="Re-enter password"
+                    show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                    error={signUpErrors.confirmPassword} touched={touchedSignUp.confirmPassword}
+                    autoComplete="new-password"
+                  />
+                  {touchedSignUp.confirmPassword && signUpErrors.confirmPassword && (
+                    <p id="error-signup-confirmpassword" className="text-xs text-red-600 -mt-3 font-medium">{signUpErrors.confirmPassword}</p>
+                  )}
+
+                  {/* Submit */}
+                  <div style={{paddingTop:'0.25rem'}}>
+                    <button type="submit" id="btn-signup-submit"
+                      disabled={!isSignUpValid || isLoading}
+                      className="glass-btn glass-btn--primary glass-btn--full glass-btn--lg">
+                      {isLoading ? <><Spinner/>Creating Account…</> : 'Create Account'}
+                    </button>
+                  </div>
+
+                  <p style={{textAlign:'center', fontSize:'0.8rem', color:'#8A8A8A'}}>
+                    Already have an account?{' '}
+                    <button type="button" id="switch-to-signin" onClick={() => handleTabChange('signin')}
+                      style={{fontWeight:700, color:'#0A0A0A', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontSize:'inherit'}}>
+                      Sign In
+                    </button>
+                  </p>
+                </form>
+              )}
+            </div>
+
+            {/* Bottom fine print */}
+            <p style={{marginTop:'1.5rem', fontSize:'0.6875rem', color:'#BABABA', textAlign:'center', maxWidth:'360px', lineHeight:1.6}}>
+              By continuing, you agree to Planova's{' '}
+              <a href="#" style={{color:'#6A6A6A', textDecoration:'underline'}}>Terms of Service</a>{' '}and{' '}
+              <a href="#" style={{color:'#6A6A6A', textDecoration:'underline'}}>Privacy Policy</a>.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AuthPage />);
+  </script>
+</body>
+</html>
