@@ -390,7 +390,7 @@ export default function AuthPage({ onAuthSuccess }) {
                       }}
                       className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                         signInRole === 'volunteer'
-                          ? 'bg-indigo-600 text-white shadow-xs'
+                          ? 'bg-black text-white shadow-xs'
                           : 'text-slate-600 hover:text-black'
                       }`}
                     >
