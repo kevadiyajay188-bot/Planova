@@ -256,7 +256,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
     // Mock /api/auth/* for preview
     const originalFetch = window.fetch;
@@ -277,6 +277,20 @@
     };
 
     function AuthPage() {
+      const [currentUser] = useState(() => {
+        try { return window.PlanovaAuth ? window.PlanovaAuth.user() : null; } catch { return null; }
+      });
+      const [viewMode, setViewMode] = useState(() => {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const cu = window.PlanovaAuth ? window.PlanovaAuth.user() : null;
+          return params.get('public') === '1' || (cu && cu.role === 'WEB_USER') ? 'public' : 'auth';
+        } catch { return 'auth'; }
+      });
+      const [publicEvents, setPublicEvents] = useState([]);
+      const [loadingEvents, setLoadingEvents] = useState(false);
+      const [rsvpStatus, setRsvpStatus] = useState({});
+      const [rsvpLoading, setRsvpLoading] = useState({});
       const [activeTab, setActiveTab] = useState('signin');
 
       // Sign In state
@@ -339,9 +353,9 @@
           const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: signInData.username.trim(), password: signInData.password }) });
           const data = await res.json().catch(()=>({}));
           if (!res.ok) throw new Error(data.message || 'Failed to sign in.');
-          if (data.token) localStorage.setItem('token', data.token);
+          const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
           setApiSuccess('Signed in successfully! Redirecting…');
-          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+          setTimeout(() => { window.PlanovaAuth ? window.PlanovaAuth.redirectForRole(user) : window.location.href = 'dashboard.html'; }, 1200);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');
         } finally { setIsLoading(false); }
@@ -356,9 +370,9 @@
           const res = await fetch('/api/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: signUpData.email.trim(), username: signUpData.username.trim(), role: signUpData.role, password: signUpData.password }) });
           const data = await res.json().catch(()=>({}));
           if (!res.ok) throw new Error(data.message || 'Registration failed.');
-          if (data.token) localStorage.setItem('token', data.token);
+          const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
           setApiSuccess('Account created! Redirecting…');
-          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+          setTimeout(() => { window.PlanovaAuth ? window.PlanovaAuth.redirectForRole(user) : window.location.href = 'dashboard.html'; }, 1200);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');
         } finally { setIsLoading(false); }
@@ -403,7 +417,106 @@
         </div>
       );
 
+      React.useEffect(() => {
+        if (viewMode === 'public') {
+          setLoadingEvents(true);
+          fetch('/api/events/public')
+            .then((res) => res.ok ? res.json() : [])
+            .then((data) => { setPublicEvents(Array.isArray(data) ? data : []); setLoadingEvents(false); })
+            .catch(() => setLoadingEvents(false));
+        }
+      }, [viewMode]);
+
+      const handleRsvp = async (eventId, eventName) => {
+        if (rsvpLoading[eventId]) return;
+        setRsvpLoading((prev) => ({ ...prev, [eventId]: true }));
+        try {
+          const res = await fetch('/api/events/' + eventId + '/rsvp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: (currentUser && (currentUser.name || currentUser.username)) || 'Campus Guest', email: (currentUser && currentUser.email) || ('guest+' + eventId + '@campus.edu') })
+          });
+          const data = await res.json().catch(() => ({}));
+          setRsvpStatus((prev) => ({ ...prev, [eventId]: res.ok ? 'RSVP Confirmed! See you there.' : (data.message || 'Already registered') }));
+        } catch { setRsvpStatus((prev) => ({ ...prev, [eventId]: 'Could not connect — try again.' })); }
+        finally { setRsvpLoading((prev) => ({ ...prev, [eventId]: false })); }
+      };
+
+
       return (
+        <>
+          {viewMode === 'public' ? (
+        <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+          {/* Public Events Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <img src="planova-logo.jpg" alt="Planova" className="w-8 h-8 object-contain rounded-lg" />
+              <span className="font-black text-black text-xl tracking-tight">PLANOVA</span>
+              <span className="text-xs font-semibold text-slate-500 border border-slate-200 rounded-full px-2.5 py-0.5">Campus Events</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode('auth')}
+              className="glass-btn glass-btn--ghost text-sm px-4 py-1.5"
+              style={{fontSize:'0.8125rem',padding:'0.375rem 1rem',background:'transparent',border:'1px solid #E2E8F0',borderRadius:'8px',cursor:'pointer',fontWeight:600,color:'#0F172A'}}
+            >
+              Sign In
+            </button>
+          </div>
+          {/* Events Grid */}
+          <div className="flex-1 p-6 sm:p-10 max-w-5xl mx-auto w-full">
+            <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Upcoming Events</h1>
+            <p className="text-sm text-slate-500 mb-8">Browse open events and reserve your spot.</p>
+            {loadingEvents ? (
+              <div className="flex justify-center items-center py-24">
+                <svg className="animate-spin w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+              </div>
+            ) : publicEvents.length === 0 ? (
+              <div className="text-center py-24 text-slate-400">
+                <p className="text-4xl mb-3">📅</p>
+                <p className="text-base font-semibold">No upcoming events right now.</p>
+                <p className="text-sm mt-1">Check back soon — new events are added regularly.</p>
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {publicEvents.map((ev) => (
+                  <div key={ev.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-slate-900 text-base leading-tight">{ev.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{ev.type}</p>
+                      </div>
+                      <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 capitalize">{(ev.status || '').replace('_',' ')}</span>
+                    </div>
+                    {ev.eventDate && (
+                      <p className="text-xs text-slate-600 font-medium">
+                        📅 {new Date(ev.eventDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    )}
+                    {ev.venue && <p className="text-xs text-slate-500">📍 {ev.venue}</p>}
+                    {rsvpStatus[ev.id] ? (
+                      <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-center">{rsvpStatus[ev.id]}</p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={rsvpLoading[ev.id]}
+                        onClick={() => handleRsvp(ev.id, ev.name)}
+                        className="glass-btn glass-btn--primary mt-auto"
+                        style={{background:'#000',color:'#fff',borderRadius:'10px',padding:'0.5rem 1rem',fontSize:'0.8125rem',fontWeight:700,border:'1px solid #1E293B',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem'}}
+                      >
+                        {rsvpLoading[ev.id] ? 'Sending…' : 'RSVP Now'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
         <div className="min-h-screen flex flex-col lg:flex-row bg-[#F8FAFC]">
 
           {/* ── LEFT PANEL: Clean light presentation with large logo & large brand name ── */}
@@ -644,8 +757,7 @@
                         className={`planova-select ${!signUpData.role ? 'planova-select--placeholder' : ''} ${touchedSignUp.role && signUpErrors.role ? 'planova-select--error' : ''}`}
                       >
                         <option value="" disabled>Select your club role</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Core Team">Core Team</option>
+                        <option value="Web User">Web User</option>
                         <option value="Volunteer">Volunteer</option>
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
@@ -715,6 +827,8 @@
             </p>
           </div>
         </div>
+          )}
+        </>
       );
     }
 

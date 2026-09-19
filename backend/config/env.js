@@ -19,16 +19,24 @@ function numberFromEnv(value, fallback) {
 function getConfig(overrides = {}) {
   const projectRoot = path.resolve(__dirname, '..', '..');
   loadEnvironmentFile(projectRoot);
+  const jwtSecret = overrides.jwtSecret || process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret === 'replace-with-a-long-random-secret') {
+    throw new Error('JWT_SECRET must be set to a long, unique value before Planova can start.');
+  }
+  if (!overrides.jwtSecret && jwtSecret.length < 32) throw new Error('JWT_SECRET must be at least 32 characters long.');
   return {
     port: numberFromEnv(overrides.port ?? process.env.PORT, 3000),
-    jwtSecret: overrides.jwtSecret || process.env.JWT_SECRET || 'planova-development-secret-change-before-production',
+    jwtSecret,
     tokenTtlHours: numberFromEnv(overrides.tokenTtlHours ?? process.env.TOKEN_TTL_HOURS, 8),
     databaseFile: overrides.databaseFile || path.join(projectRoot, 'backend', 'database', 'data.json'),
     frontendDirectory: overrides.frontendDirectory || projectRoot,
     aiProvider: overrides.aiProvider || process.env.AI_PROVIDER || 'local',
     aiModel: overrides.aiModel || process.env.AI_MODEL || 'gemini-1.5-pro',
     aiApiKey: overrides.aiApiKey || process.env.AI_API_KEY || '',
-    aiAutonomy: overrides.aiAutonomy || process.env.AI_AUTONOMY || 'ASK_FOR_RISKY'
+    aiAutonomy: overrides.aiAutonomy || process.env.AI_AUTONOMY || 'ASK_FOR_RISKY',
+    bootstrapSecret: overrides.bootstrapSecret || process.env.BOOTSTRAP_ADMIN_SECRET || '',
+    loginRateLimitAttempts: numberFromEnv(overrides.loginRateLimitAttempts ?? process.env.LOGIN_RATE_LIMIT_ATTEMPTS, 8),
+    loginRateLimitWindowMinutes: numberFromEnv(overrides.loginRateLimitWindowMinutes ?? process.env.LOGIN_RATE_LIMIT_WINDOW_MINUTES, 15)
   };
 }
 

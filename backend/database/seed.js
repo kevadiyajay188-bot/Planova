@@ -8,8 +8,11 @@ function isoDaysFromNow(days, hour = 10) {
 function createSeedData() {
   const now = new Date().toISOString();
   return {
-    version: 1,
+    version: 2,
     users: [],
+    sessions: [],
+    rsvps: [],
+    settings: {},
     events: [
       {
         id: 'evt-technova',

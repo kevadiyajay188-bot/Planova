@@ -15,6 +15,7 @@ export default function Dashboard({ userName = 'Jenish', role = 'President', clu
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotMessages, setCopilotMessages] = useState([
     { role: 'ai', text: 'Hello Jenish! I am Planova Copilot. I can draft agendas, analyze open risks, or rebalance volunteer task assignments. How can I assist you today?' }
   ]);
@@ -50,23 +51,35 @@ export default function Dashboard({ userName = 'Jenish', role = 'President', clu
 
   const handleCopilotSubmit = (e) => {
     e.preventDefault();
-    if (!copilotQuery.trim()) return;
+    if (!copilotQuery.trim() || copilotLoading) return;
     const userMsg = copilotQuery;
     setCopilotMessages(prev => [
       ...prev,
       { role: 'user', text: userMsg }
     ]);
     setCopilotQuery('');
+    setCopilotLoading(true);
 
-    setTimeout(() => {
-      setCopilotMessages(prev => [
-        ...prev,
-        {
-          role: 'ai',
-          text: `Analyzing "${userMsg}" across 8 modules... Verified that 41 of 68 tasks are completed. All critical risks are flagged.`
-        }
-      ]);
-    }, 600);
+    fetch('/api/ai/copilot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userMsg })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const reply = data.text || data.response || 'Operation completed.';
+        setCopilotMessages(prev => [
+          ...prev,
+          { role: 'ai', text: reply }
+        ]);
+      })
+      .catch(() => {
+        setCopilotMessages(prev => [
+          ...prev,
+          { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }
+        ]);
+      })
+      .finally(() => setCopilotLoading(false));
   };
 
   return (
@@ -123,6 +136,17 @@ export default function Dashboard({ userName = 'Jenish', role = 'President', clu
                 {role}
               </span>
             </div>
+            <button
+              type="button"
+              title="Sign out"
+              onClick={() => typeof window !== 'undefined' && window.PlanovaAuth ? window.PlanovaAuth.logout() : (typeof window !== 'undefined' && location.assign('/'))}
+              className="ml-1 p-1 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100 transition-colors"
+              aria-label="Sign out"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
           </div>
         </div>
       </header>
@@ -249,6 +273,15 @@ export default function Dashboard({ userName = 'Jenish', role = 'President', clu
                     </div>
                   </div>
                 ))}
+                {copilotLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-bl-none shadow-xs px-4 py-3 text-xs text-slate-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleCopilotSubmit} className="p-4 border-t border-slate-200 bg-white flex gap-2">
@@ -258,13 +291,15 @@ export default function Dashboard({ userName = 'Jenish', role = 'President', clu
                   onChange={(e) => setCopilotQuery(e.target.value)}
                   placeholder="Ask Planova AI anything..."
                   className="flex-1 px-3.5 py-2.5 text-xs bg-slate-50 border border-[#E2E8F0] rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-black text-slate-900"
+                  disabled={copilotLoading}
                 />
                 {/* BLACK Send Button */}
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold text-white bg-black hover:bg-slate-800 rounded-xl transition-colors"
+                  disabled={copilotLoading}
+                  className="px-4 py-2 text-xs font-bold text-white bg-black hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
                 >
-                  Send
+                  {copilotLoading ? '…' : 'Send'}
                 </button>
               </form>
             </div>

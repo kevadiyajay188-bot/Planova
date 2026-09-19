@@ -599,6 +599,36 @@
           { item: 'Alumni Welcome Badges & Gifts', cost: 200, status: 'Spent' },
           { item: 'Event Photographer & Banners', cost: 800, status: 'Planned' }
         ]
+      },
+      'Hackathon 2026': {
+        name: 'Hackathon 2026',
+        fullName: 'Hackathon 2026 Inter-College',
+        totalPlanned: 10000,
+        committed: 4000,
+        spent: 2500,
+        sponsorship: 7000,
+        ledger: [
+          { item: 'Cloud Infrastructure & API Credits', cost: 1500, status: 'Spent' },
+          { item: 'Hardware Sandbox & IoT Kits', cost: 1400, status: 'Spent' },
+          { item: 'Mentorship honorariums', cost: 1200, status: 'Committed' },
+          { item: 'Hacker kits & Merchandise', cost: 2600, status: 'Committed' },
+          { item: 'Prizes & Recognition', cost: 2800, status: 'Planned' }
+        ]
+      },
+      'Cultural Fest': {
+        name: 'Cultural Fest',
+        fullName: 'Annual Cultural Fest 2026',
+        totalPlanned: 14000,
+        committed: 5200,
+        spent: 4100,
+        sponsorship: 9500,
+        ledger: [
+          { item: 'Main Stage Lighting & LED Walls', cost: 4100, status: 'Spent' },
+          { item: 'Sound & Artist Line-in Systems', cost: 2800, status: 'Committed' },
+          { item: 'Celebrity Guest Logistics', cost: 2400, status: 'Committed' },
+          { item: 'Campus Decorations & Canopies', cost: 2200, status: 'Planned' },
+          { item: 'Hospitality & Safety Roster', cost: 2500, status: 'Planned' }
+        ]
       }
     };
 
@@ -1030,6 +1060,13 @@
       const [acts, setActs] = useState(DEFAULT_ACTIVITIES);
       const [undone, setUndone] = useState(new Set());
 
+      const handleUndo = (id) => {
+        fetch(`/api/ai/undo/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(() => setUndone(prev => new Set(prev).add(id)))
+          .catch(() => setUndone(prev => new Set(prev).add(id))); // optimistic: mark undone in UI even if action wasn't AI-tracked
+      };
+
       return (
         <aside className="clean-card p-5 flex flex-col h-full">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
@@ -1064,7 +1101,7 @@
                       <span>{item.timestamp}</span>
                       {isAI && item.undoable && !isUndone && (
                         <button
-                          onClick={() => setUndone(prev => new Set(prev).add(item.id))}
+                          onClick={() => handleUndo(item.id)}
                           className="font-bold text-[#0E7490] hover:underline"
                         >
                           [Undo]
@@ -1083,21 +1120,62 @@
     /* ─── 6. DASHBOARD ROOT ─────────────────────────────────────────────────── */
     function Dashboard() {
       const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [currentUser, setCurrentUser] = useState(() => {
+        try {
+          return window.PlanovaAuth ? window.PlanovaAuth.user() : null;
+        } catch {
+          return null;
+        }
+      });
       const [copilotOpen, setCopilotOpen] = useState(false);
       const [query, setQuery] = useState('');
+      const [copilotLoading, setCopilotLoading] = useState(false);
       const [messages, setMessages] = useState([
-        { role: 'ai', text: 'Hello Jenish! I am Planova Copilot. I can draft agendas, analyze open risks, or rebalance volunteer task assignments. How can I assist you today?' }
+        { role: 'ai', text: 'Hello! I am Planova Copilot. I can draft agendas, analyze open risks, or rebalance volunteer task assignments. How can I assist you today?' }
       ]);
+
+      useEffect(() => {
+        fetch('/api/auth/me')
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(payload => {
+            const u = payload.data?.user || payload.user;
+            if (u) {
+              setCurrentUser(u);
+              if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: u });
+            }
+          })
+          .catch(() => {});
+      }, []);
+
+      const userName = currentUser?.name || currentUser?.username || 'Jenish';
+      const userRole = currentUser?.role ? (
+        currentUser.role === 'PRESIDENT' || currentUser.role === 'Admin' ? 'President' :
+        currentUser.role === 'TEAM_LEAD' || currentUser.role === 'Core Team' || currentUser.role === 'Coordinator' ? 'Team Lead' :
+        currentUser.role === 'VOLUNTEER' ? 'Volunteer' : currentUser.role
+      ) : 'President';
+      const userInitial = (userName[0] || 'J').toUpperCase();
 
       const handleSubmit = (e) => {
         e.preventDefault();
-        if (!query.trim()) return;
+        if (!query.trim() || copilotLoading) return;
         const msg = query;
         setMessages(m => [...m, { role: 'user', text: msg }]);
         setQuery('');
-        setTimeout(() => {
-          setMessages(m => [...m, { role: 'ai', text: `Analyzing "${msg}" across 8 modules... Verified 41 of 68 tasks are completed. All critical risks are flagged.` }]);
-        }, 500);
+        setCopilotLoading(true);
+        fetch('/api/ai/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg })
+        })
+          .then(r => r.json())
+          .then(data => {
+            const reply = data.text || data.response || 'Done.';
+            setMessages(m => [...m, { role: 'ai', text: reply }]);
+          })
+          .catch(() => {
+            setMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+          })
+          .finally(() => setCopilotLoading(false));
       };
 
       const NAV_ITEMS = [
@@ -1165,16 +1243,27 @@
               <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
                 <div className="relative flex-shrink-0">
                   <div className="w-9 h-9 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shadow-xs ring-2 ring-slate-200">
-                    J
+                    {userInitial}
                   </div>
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-extrabold text-black leading-tight">Jenish</span>
+                  <span className="text-sm font-extrabold text-black leading-tight">{userName}</span>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase bg-black text-white shadow-xs">
-                    President
+                    {userRole}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  title="Sign out"
+                  onClick={() => window.PlanovaAuth ? window.PlanovaAuth.logout() : location.assign('/')}
+                  className="ml-1 p-1 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100 transition-colors"
+                  aria-label="Sign out"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </header>
@@ -1184,7 +1273,7 @@
             <section className="clean-card p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-black text-black tracking-tight">
-                  Good morning, Jenish.
+                  Good morning, {userName}.
                 </h2>
                 <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 flex items-center gap-2">
                   <span className="text-[#0E7490] font-bold">✦ AI Summary:</span> 3 tasks due today, 2 overdue, and TechNova's auditorium permission is still pending.
@@ -1350,6 +1439,15 @@
                         </div>
                       </div>
                     ))}
+                    {copilotLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-bl-none shadow-xs px-4 py-3 text-xs text-slate-400 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex gap-2">
@@ -1359,10 +1457,11 @@
                       onChange={e => setQuery(e.target.value)}
                       placeholder="Ask Planova AI..."
                       className="flex-1 px-3.5 py-2.5 text-xs border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-slate-900"
+                      disabled={copilotLoading}
                     />
                     {/* BLACK Send Button */}
-                    <button type="submit" className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
-                      Send
+                    <button type="submit" className="btn-black px-4 py-2 text-xs font-bold rounded-xl" disabled={copilotLoading}>
+                      {copilotLoading ? '…' : 'Send'}
                     </button>
                   </form>
                 </div>

@@ -96,7 +96,13 @@ export default function ActivityFeed() {
   }, []);
 
   const handleUndo = (id) => {
-    setUndoneIds(prev => new Set(prev).add(id));
+    fetch(`/api/ai/undo/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(() => setUndoneIds(prev => new Set(prev).add(id)))
+      .catch(() => setUndoneIds(prev => new Set(prev).add(id)));
   };
 
   const filteredActivities = activities.filter(item => {

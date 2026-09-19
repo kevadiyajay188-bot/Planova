@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createSeedData } = require('./seed');
+const { migrateData } = require('./migrations');
 
 function createStore(databaseFile) {
   let writeQueue = Promise.resolve();
@@ -17,7 +18,7 @@ function createStore(databaseFile) {
   async function read() {
     await ensureDatabase();
     try {
-      return JSON.parse(await fs.readFile(databaseFile, 'utf8'));
+      return migrateData(JSON.parse(await fs.readFile(databaseFile, 'utf8')));
     } catch (error) {
       throw new Error(`Database could not be read: ${error.message}`);
     }

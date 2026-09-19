@@ -120,7 +120,7 @@ export const DEFAULT_EVENT_BUDGETS = {
       { item: 'Multi-cam AV & Livestream Rig', cost: 1000, status: 'Planned' }
     ]
   },
-  'Alumni Mixer': {
+      'Alumni Mixer': {
     name: 'Alumni Mixer',
     fullName: 'Alumni Mentorship Mixer',
     totalPlanned: 4200,
@@ -133,6 +133,38 @@ export const DEFAULT_EVENT_BUDGETS = {
       { item: 'Gourmet Hors d\'oeuvres & Coffee', cost: 900, status: 'Committed' },
       { item: 'Alumni Welcome Badges & Gifts', cost: 200, status: 'Spent' },
       { item: 'Event Photographer & Banners', cost: 800, status: 'Planned' }
+    ]
+  },
+  'Hackathon 2026': {
+    name: 'Hackathon 2026',
+    fullName: 'Hackathon 2026 Inter-College',
+    totalPlanned: 10000,
+    committed: 4000,
+    spent: 2500,
+    sponsorship: 7000,
+    currency: '$',
+    ledger: [
+      { item: 'Cloud Infrastructure & API Credits', cost: 1500, status: 'Spent' },
+      { item: 'Hardware Sandbox & IoT Kits', cost: 1400, status: 'Spent' },
+      { item: 'Mentorship honorariums', cost: 1200, status: 'Committed' },
+      { item: 'Hacker kits & Merchandise', cost: 2600, status: 'Committed' },
+      { item: 'Prizes & Recognition', cost: 2800, status: 'Planned' }
+    ]
+  },
+  'Cultural Fest': {
+    name: 'Cultural Fest',
+    fullName: 'Annual Cultural Fest 2026',
+    totalPlanned: 14000,
+    committed: 5200,
+    spent: 4100,
+    sponsorship: 9500,
+    currency: '$',
+    ledger: [
+      { item: 'Main Stage Lighting & LED Walls', cost: 4100, status: 'Spent' },
+      { item: 'Sound & Artist Line-in Systems', cost: 2800, status: 'Committed' },
+      { item: 'Celebrity Guest Logistics', cost: 2400, status: 'Committed' },
+      { item: 'Campus Decorations & Canopies', cost: 2200, status: 'Planned' },
+      { item: 'Hospitality & Safety Roster', cost: 2500, status: 'Planned' }
     ]
   }
 };
