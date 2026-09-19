@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>My Tasks — Planova Volunteer</title>
+  <meta name="description" content="Personal volunteer tasks, announcements, and shift schedule for TechNova 2026 on Planova." />
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: '#4F46E5',
+            'brand-dark': '#3730A3',
+            ai: '#0E7490',
+            'status-todo': '#94A3B8',
+            'status-doing': '#2563EB',
+            'status-blocked': '#DC2626',
+            'status-done': '#059669',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 18px;
+      transition: all 180ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.05);
+    }
+    .task-row {
+      min-height: 56px;
+      transition: background-color 150ms ease, transform 120ms ease;
+    }
+    .task-row:active {
+      transform: scale(0.995);
+    }
+    /* Checkbox draw-in animation */
+    .checkbox-tick {
+      stroke-dasharray: 24;
+      stroke-dashoffset: 24;
+      transition: stroke-dashoffset 220ms ease-out;
+    }
+    .checked .checkbox-tick {
+      stroke-dashoffset: 0;
+    }
+    /* Bottom Sheet slide-up on mobile */
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .bottom-sheet-anim {
+      animation: slideUp 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    /* Pulsing badge */
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.03); }
+    }
+    .pulse-badge {
+      animation: subtlePulse 2.5s infinite ease-in-out;
+    }
+    /* Hide scrollbars on carousel */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="pb-24 sm:pb-12">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    /* ══════════════════════════════════════════════════════════
+       MOCK DATA CONTRACT: VOLUNTEER (Aman Varma)
+       ══════════════════════════════════════════════════════════ */
+    const INITIAL_VOLUNTEER = {
+      name: 'Aman Varma',
+      firstName: 'Aman',
+      avatar: 'AV',
+      role: 'Volunteer',
+      vertical: 'Operations & Logistics',
+      event: 'TechNova 2026'
+    };
+
+    const INITIAL_ANNOUNCEMENTS = [
+      {
+        id: 'ann-1',
+        channel: 'whatsapp',
+        channelIcon: '💬',
+        channelLabel: 'WhatsApp Ops',
+        title: 'All-Hands Briefing Moved to Auditorium Hall B at 5:00 PM',
+        preview: 'Please gather directly at Hall B instead of the main atrium. Room setup team will distribute walkie-talkies and security badges.',
+        body: 'Due to ongoing stage lighting calibration in the main auditorium, our pre-event volunteer briefing is moved to Auditorium Hall B at 5:00 PM sharp. Every volunteer must attend to receive their walkie-talkie channel allocations and lanyard identification credentials. Dinner tokens will also be distributed.',
+        postedTime: '2 hours ago',
+        author: 'Jenish (President)'
+      },
+      {
+        id: 'ann-2',
+        channel: 'email',
+        channelIcon: '✉️',
+        channelLabel: 'Email Notice',
+        title: 'Volunteer Meal Wristbands Ready for Collection at Desk 3',
+        preview: 'Pick up your dietary color-coded wristbands behind stage. Includes morning breakfast, lunch, and late-night hackathon pizza.',
+        body: 'Catering vendor wristbands are now sorted by dietary preference (Vegetarian, Vegan, Regular). Please stop by Desk 3 behind the main stage before 1:00 PM to claim yours. You will need this wristband to access the volunteer green room during the hackathon.',
+        postedTime: '4 hours ago',
+        author: 'Tanvi Gaikwad (Logistics Lead)'
+      },
+      {
+        id: 'ann-3',
+        channel: 'notice',
+        channelIcon: '📢',
+        channelLabel: 'Notice Board',
+        title: 'Campus EMT Medical & Emergency Safety Protocol Updated',
+        preview: 'In case of emergency power breaker trips or medical needs, notify your Zone Coordinator immediately before calling dispatch.',
+        body: 'Campus security has provided updated contact phone numbers for the mobile first-aid station outside Lab 4. If any attendee requires medical assistance or high-amp power strips trigger a breaker, ping the #emergency-desk channel on Discord immediately.',
+        postedTime: '1 day ago',
+        author: 'Campus Safety Liaison'
+      }
+    ];
+
+    const INITIAL_TASKS = [
+      // TODAY: Overdue task (shows at top of Today with red accent)
+      {
+        id: 'tsk-v1',
+        title: 'Set up volunteer check-in signage and name badges at Gate 2',
+        description: 'Mount laminated arrow signs from the West parking lot directing hackers to Gate 2 entrance. Place the 250 printed student badges on registration table #1.',
+        eventName: 'TechNova 2026',
+        vertical: 'Logistics',
+        dueAt: '2026-09-18',
+        dueTimeStr: 'Overdue (Yesterday)',
+        overdue: true,
+        priority: 'P0',
+        status: 'todo',
+        assignedBy: 'Jenish (President)',
+        group: 'today',
+        proofPhoto: null,
+        blockedReason: null
+      },
+      // TODAY: Due today tasks
+      {
+        id: 'tsk-v2',
+        title: 'Distribute speaker welcome kits to VIP Lounge & Green Room',
+        description: 'Take the 8 premium gift bags from the operations store room and deliver them to VIP Room 104 before the keynote speaker arrives.',
+        eventName: 'TechNova 2026',
+        vertical: 'Operations',
+        dueAt: '2026-09-19',
+        dueTimeStr: 'Due 11:30 AM',
+        overdue: false,
+        priority: 'P1',
+        status: 'todo',
+        assignedBy: 'Kavya Sen (Speaker Lead)',
+        group: 'today',
+        proofPhoto: null,
+        blockedReason: null
+      },
+      {
+        id: 'tsk-v3',
+        title: 'Verify high-amp power strips allocated to hacker tables 1–30',
+        description: 'Walk through Main Hall rows 1 through 30. Test each multi-plug socket with the voltage checker and secure cables with yellow hazard gaffer tape.',
+        eventName: 'TechNova 2026',
+        vertical: 'Logistics',
+        dueAt: '2026-09-19',
+        dueTimeStr: 'Due 3:00 PM',
+        overdue: false,
+        priority: 'P1',
+        status: 'todo',
+        assignedBy: 'Priya Patel (Tech Lead)',
+        group: 'today',
+        proofPhoto: null,
+        blockedReason: null
+      },
+      // TO DO: Tomorrow
+      {
+        id: 'tsk-v4',
+        title: 'Check wireless microphone batteries & backup podium mics',
+        description: 'Install fresh AA alkaline batteries into all 4 handheld wireless mics and ensure battery level reads 100% on the audio transmitter.',
+        eventName: 'TechNova 2026',
+        vertical: 'Technical',
+        dueAt: '2026-09-20',
+        dueTimeStr: 'Tomorrow',
+        overdue: false,
+        priority: 'P1',
+        status: 'todo',
+        assignedBy: 'Arjun Rao',
+        group: 'tomorrow',
+        proofPhoto: null,
+        blockedReason: null
+      },
+      // TO DO: Thursday (This week)
+      {
+        id: 'tsk-v5',
+        title: 'Hang hackathon track sponsor posters along cafeteria corridor',
+        description: 'Fasten 12 track sponsor vinyl posters along the north wall using painter tape so the campus paint is not damaged.',
+        eventName: 'TechNova 2026',
+        vertical: 'Marketing',
+        dueAt: '2026-09-24',
+        dueTimeStr: 'Thursday, Sep 24',
+        overdue: false,
+        priority: 'P0',
+        status: 'todo',
+        assignedBy: 'Neha Sharma',
+        group: 'this_week',
+        proofPhoto: null,
+        blockedReason: null
+      },
+      // TO DO: Next week
+      {
+        id: 'tsk-v6',
+        title: 'Collect leftover lanyard clips & unused attendee swag for inventory',
+        description: 'Sort empty lanyards into boxes of 50 and count leftover sponsor sticker sheets for the post-event inventory audit.',
+        eventName: 'TechNova 2026',
+        vertical: 'Operations',
+        dueAt: '2026-10-02',
+        dueTimeStr: 'Next Week',
+        overdue: false,
+        priority: 'P2', // Routine (no dot)
+        status: 'todo',
+        assignedBy: 'Rohan Jha',
+        group: 'later',
+        proofPhoto: null,
+        blockedReason: null
+      }
+    ];
+
+    const INITIAL_COMPLETED_TASKS = [
+      {
+        id: 'tsk-c1',
+        title: 'Collect 10 walkie-talkies from campus security office',
+        eventName: 'TechNova 2026',
+        vertical: 'Operations',
+        completedAt: 'Today, 9:15 AM',
+        assignedBy: 'Jenish (President)'
+      },
+      {
+        id: 'tsk-c2',
+        title: 'Review emergency evacuation map & first aid station locations',
+        eventName: 'TechNova 2026',
+        vertical: 'Safety',
+        completedAt: 'Yesterday, 4:40 PM',
+        assignedBy: 'Tanvi Gaikwad'
+      }
+    ];
+
+    const INITIAL_SHIFTS = [
+      {
+        id: 'shf-1',
+        eventName: 'TechNova 2026',
+        date: 'Tomorrow · Sep 20, 2026',
+        timeRange: '9:00 AM – 1:00 PM',
+        station: 'Main Entrance & Registration Desk 2',
+        role: 'Check-in & Badge Distribution',
+        isNear: true, // within 24 hours
+        nearLabel: 'Upcoming in 14h'
+      },
+      {
+        id: 'shf-2',
+        eventName: 'TechNova 2026',
+        date: 'Event Main Day · Oct 15, 2026',
+        timeRange: '2:00 PM – 6:00 PM',
+        station: 'Hacker Support Station — Zone B',
+        role: 'Hardware Bench & Power Oversight',
+        isNear: false
+      }
+    ];
+
+    /* ══════════════════════════════════════════════════════════
+       MAIN COMPONENT: MyTasksApp
+       ══════════════════════════════════════════════════════════ */
+    function MyTasksApp() {
+      const [user] = useState(INITIAL_VOLUNTEER);
+      const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
+      const [tasks, setTasks] = useState(INITIAL_TASKS);
+      const [completedTasks, setCompletedTasks] = useState(INITIAL_COMPLETED_TASKS);
+      const [shifts, setShifts] = useState(INITIAL_SHIFTS);
+
+      // Hero Announcement Carousel state
+      const [activeSlide, setActiveSlide] = useState(0);
+      const [isPaused, setIsPaused] = useState(false);
+      const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+      const [allAnnouncementsModal, setAllAnnouncementsModal] = useState(false);
+
+      // Filter segment for To Do section: 'week' | 'later' | 'all'
+      const [todoFilter, setTodoFilter] = useState('week');
+
+      // Task Detail sheet / modal
+      const [activeTask, setActiveTask] = useState(null);
+      const [blockedText, setBlockedText] = useState('');
+      const [showBlockerInput, setShowBlockerInput] = useState(false);
+      const [proofPhotoPreview, setProofPhotoPreview] = useState(null);
+
+      // Collapsed Recently Completed toggle
+      const [showCompleted, setShowCompleted] = useState(false);
+
+      // Notifications Bell Dropdown Modal
+      const [showNotifications, setShowNotifications] = useState(false);
+
+      // Ask Planova Volunteer AI drawer
+      const [copilotOpen, setCopilotOpen] = useState(false);
+      const [chatMessages, setChatMessages] = useState([
+        {
+          sender: 'ai',
+          text: `Hi ${user.firstName}! I'm your volunteer assistant. Ask me about your upcoming shifts, today's tasks, or what's due next.`
+        }
+      ]);
+      const [chatInput, setChatInput] = useState('');
+
+      // Toast Feedback
+      const [toast, setToast] = useState(null);
+      const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3200);
+      };
+
+      // 6-second auto-rotation for Announcement Carousel
+      useEffect(() => {
+        if (announcements.length <= 1 || isPaused) return;
+        const interval = setInterval(() => {
+          setActiveSlide(prev => (prev + 1) % announcements.length);
+        }, 6000);
+        return () => clearInterval(interval);
+      }, [announcements.length, isPaused]);
+
+      /* ─── Task Completion Handler (Optimistic UI) ─── */
+      const handleToggleComplete = (taskId, e) => {
+        if (e) e.stopPropagation();
+        const taskToFinish = tasks.find(t => t.id === taskId);
+        if (!taskToFinish) return;
+
+        // Animate out and move to completed
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        const newCompleted = {
+          id: `comp-${Date.now()}`,
+          title: taskToFinish.title,
+          eventName: taskToFinish.eventName,
+          vertical: taskToFinish.vertical,
+          completedAt: 'Just now',
+          assignedBy: taskToFinish.assignedBy
+        };
+        setCompletedTasks(prev => [newCompleted, ...prev]);
+        showToast(`🎉 Marked "${taskToFinish.title.slice(0, 32)}..." as done!`);
+
+        if (activeTask && activeTask.id === taskId) {
+          setActiveTask(null);
+        }
+      };
+
+      /* ─── Re-open Task from Completed ─── */
+      const handleReopenTask = (compItem) => {
+        setCompletedTasks(prev => prev.filter(c => c.id !== compItem.id));
+        const restoredTask = {
+          id: `tsk-${Date.now()}`,
+          title: compItem.title,
+          description: 'Restored from recently completed.',
+          eventName: compItem.eventName,
+          vertical: compItem.vertical,
+          dueAt: '2026-09-19',
+          dueTimeStr: 'Today',
+          overdue: false,
+          priority: 'P1',
+          status: 'todo',
+          assignedBy: compItem.assignedBy,
+          group: 'today',
+          proofPhoto: null,
+          blockedReason: null
+        };
+        setTasks(prev => [restoredTask, ...prev]);
+        showToast(`Task reopened and moved to Today.`);
+      };
+
+      /* ─── Submit Blocker / Escalate Risk ─── */
+      const handleReportBlocker = (e) => {
+        e.preventDefault();
+        if (!blockedText.trim() || !activeTask) return;
+
+        setTasks(prev => prev.map(t => {
+          if (t.id === activeTask.id) {
+            return {
+              ...t,
+              status: 'blocked',
+              blockedReason: blockedText.trim()
+            };
+          }
+          return t;
+        }));
+
+        showToast(`⚠️ Blocker logged & escalated to Admin Risk Radar!`, 'alert');
+        setBlockedText('');
+        setShowBlockerInput(false);
+        setActiveTask(null);
+      };
+
+      /* ─── Mock Photo Proof Upload ─── */
+      const handleSimulatePhotoUpload = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setProofPhotoPreview(ev.target.result);
+            showToast('📸 Proof photo attached successfully!');
+          };
+          reader.readAsDataURL(file);
+        } else {
+          // Fallback simulation
+          setProofPhotoPreview('https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600&auto=format&fit=crop&q=80');
+          showToast('📸 Photo attached: verification_photo.jpg');
+        }
+      };
+
+      /* ─── Volunteer-Scoped AI Copilot ─── */
+      const handleSendChat = (promptText) => {
+        const query = promptText || chatInput;
+        if (!query.trim()) return;
+
+        setChatMessages(prev => [...prev, { sender: 'user', text: query }]);
+        setChatInput('');
+
+        setTimeout(() => {
+          const q = query.toLowerCase();
+          let reply = '';
+
+          if (q.includes('shift') || q.includes('next shift') || q.includes('when')) {
+            const nextShift = shifts[0];
+            reply = nextShift 
+              ? `Your next shift is **${nextShift.date}** from **${nextShift.timeRange}** at **${nextShift.station}** (${nextShift.role}). It is marked upcoming in 14 hours!`
+              : `You do not have any upcoming shifts scheduled right now.`;
+          } else if (q.includes('today') || q.includes('tasks') || q.includes('need to do')) {
+            const todayCount = tasks.filter(t => t.group === 'today').length;
+            const overdueCount = tasks.filter(t => t.overdue).length;
+            reply = `You have **${todayCount} tasks due today**${overdueCount > 0 ? ` including **${overdueCount} overdue item** at Gate 2` : ''}. The highest priority is "${tasks[0]?.title || 'none'}".`;
+          } else if (q.includes('mark') && q.includes('done')) {
+            if (tasks.length > 0) {
+              const target = tasks[0];
+              handleToggleComplete(target.id);
+              reply = `Done! I've marked "${target.title}" as completed and moved it to your completed archive.`;
+            } else {
+              reply = `All your tasks are already completed! Enjoy your break.`;
+            }
+          } else if (q.includes('where') || q.includes('location') || q.includes('desk')) {
+            reply = `Volunteer check-in and briefing is at **Auditorium Hall B at 5:00 PM**. Meal wristbands can be picked up at **Desk 3 behind the main stage**.`;
+          } else if (q.includes('reassign') || q.includes('broadcast') || q.includes('announcement') || q.includes('budget') || q.includes('members')) {
+            reply = `🔒 **Volunteer Access Notice:** Administrative tools (reassigning members, viewing club budgets, or sending campus broadcasts) are restricted to the Executive President. As a volunteer, I can help you with your personal schedule, tasks, shifts, and logging blockers!`;
+          } else {
+            reply = `I checked your schedule: you have ${tasks.length} open tasks across TechNova 2026. Your first priority today is "${tasks[0]?.title || 'All caught up'}". Let me know if you need help with shifts or directions!`;
+          }
+
+          setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
+        }, 400);
+      };
+
+      // Split tasks
+      const todayTasks = useMemo(() => {
+        const list = tasks.filter(t => t.group === 'today');
+        // Sort overdue to the very top
+        return [...list].sort((a, b) => (b.overdue ? 1 : 0) - (a.overdue ? 1 : 0));
+      }, [tasks]);
+
+      const overdueCount = useMemo(() => todayTasks.filter(t => t.overdue).length, [todayTasks]);
+
+      const upcomingTasks = useMemo(() => {
+        const otherTasks = tasks.filter(t => t.group !== 'today');
+        if (todoFilter === 'week') {
+          return otherTasks.filter(t => t.group === 'tomorrow' || t.group === 'this_week');
+        }
+        if (todoFilter === 'later') {
+          return otherTasks.filter(t => t.group === 'later');
+        }
+        return otherTasks; // 'all'
+      }, [tasks, todoFilter]);
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+          {/* ══════════════════════════════════════════════════════════
+              1. SIMPLE TOP BAR
+              ══════════════════════════════════════════════════════════ */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-xs">
+            {/* Left: Logo & Event */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1 flex-shrink-0">
+                <img
+                  src="planova-logo.jpg"
+                  alt="Planova Logo"
+                  className="w-full h-full object-contain"
+                  onError={e => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<span class="font-black text-black text-sm">P</span>';
+                  }}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black tracking-tight text-slate-900 leading-none">PLANOVA</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    TechNova 2026
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">
+                  Volunteer Portal
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Notification Bell & Volunteer Avatar */}
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <button
+                onClick={() => setShowNotifications(true)}
+                className="relative p-2 text-slate-600 hover:text-black hover:bg-slate-100 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-black"
+                title="Club Announcements & Alerts"
+                aria-label="Notifications"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-600 ring-2 ring-white"></span>
+              </button>
+
+              {/* Volunteer Avatar Profile */}
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    {user.avatar}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
+                </div>
+                <div className="hidden md:flex flex-col">
+                  <span className="text-xs font-extrabold text-slate-900 leading-tight">{user.name}</span>
+                  <span className="text-[10px] font-bold text-slate-500">{user.role}</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* ══════════════════════════════════════════════════════════
+              MAIN CONTAINER (Max 720px for warm, focused readability)
+              ══════════════════════════════════════════════════════════ */}
+          <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-5 pb-16 space-y-6">
+
+            {/* ══════════════════════════════════════════════════════════
+                2. HERO ANNOUNCEMENT AREA
+                ══════════════════════════════════════════════════════════ */}
+            {announcements.length > 0 ? (
+              <div
+                className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#4338CA] via-[#4F46E5] to-[#6366F1] text-white p-6 sm:p-7 shadow-lg shadow-indigo-500/10 cursor-pointer group"
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+                onTouchStart={() => setIsPaused(true)}
+                onTouchEnd={() => setIsPaused(false)}
+                onClick={() => setSelectedAnnouncement(announcements[activeSlide])}
+              >
+                {/* Ambient glow decoration */}
+                <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
+                <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-indigo-900/30 blur-2xl pointer-events-none"></div>
+
+                <div className="relative z-10 space-y-3">
+                  {/* Top Bar inside card */}
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-indigo-100 border border-white/20">
+                      <span>{announcements[activeSlide].channelIcon}</span>
+                      <span>{announcements[activeSlide].channelLabel}</span>
+                    </div>
+                    <span className="text-[11px] font-medium text-indigo-200">
+                      Posted {announcements[activeSlide].postedTime}
+                    </span>
+                  </div>
+
+                  {/* Announcement Title & Body Preview */}
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black leading-snug tracking-tight text-white drop-shadow-xs">
+                      {announcements[activeSlide].title}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-indigo-100/90 line-clamp-2 mt-1.5 leading-relaxed">
+                      {announcements[activeSlide].preview}
+                    </p>
+                  </div>
+
+                  {/* Footer of Card: Dots + "View all announcements" */}
+                  <div className="pt-2 flex items-center justify-between border-t border-white/15">
+                    {/* Dots indicator */}
+                    {announcements.length > 1 ? (
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {announcements.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveSlide(idx)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                              idx === activeSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'
+                            }`}
+                            aria-label={`Slide ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div></div>
+                    )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAllAnnouncementsModal(true);
+                      }}
+                      className="text-xs font-bold text-white hover:underline flex items-center gap-1"
+                    >
+                      <span>View all announcements</span>
+                      <span>→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Empty Announcement State */
+              <div className="clean-card p-5 text-center flex items-center justify-center gap-2.5 text-xs text-slate-500">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">✓</span>
+                <span>No announcements right now — you're all caught up!</span>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════
+                3. GREETING LINE & AI SUMMARY
+                ══════════════════════════════════════════════════════════ */}
+            <div className="pt-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Hi {user.firstName}, here's your day.
+              </h1>
+              {todayTasks.length > 0 && (
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium flex items-center gap-1.5">
+                  <span className="text-indigo-600">✦</span>
+                  <span>
+                    You have <strong className="text-slate-900 font-bold">{todayTasks.length} task{todayTasks.length > 1 ? 's' : ''} today</strong>
+                    {overdueCount > 0 ? (
+                      <> and <strong className="text-red-600 font-bold">{overdueCount} is overdue</strong>.</>
+                    ) : (
+                      <>. Ready to get started?</>
+                    )}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════
+                4. TODAY SECTION (Large 56px+ thumb-friendly rows)
+                ══════════════════════════════════════════════════════════ */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-900">Today</h2>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {todayTasks.length}
+                  </span>
+                </div>
+                {overdueCount > 0 && (
+                  <span className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+                    {overdueCount} Overdue
+                  </span>
+                )}
+              </div>
+
+              {todayTasks.length > 0 ? (
+                <div className="clean-card divide-y divide-slate-100 overflow-hidden shadow-xs">
+                  {todayTasks.map(task => {
+                    const isOverdue = task.overdue;
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => {
+                          setActiveTask(task);
+                          setShowBlockerInput(false);
+                          setProofPhotoPreview(task.proofPhoto);
+                        }}
+                        className={`task-row p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 ${
+                          isOverdue ? 'border-l-4 border-l-red-500 bg-red-50/20' : ''
+                        }`}
+                      >
+                        {/* Checkbox + Title block */}
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleComplete(task.id, e)}
+                            className="w-6 h-6 rounded-full border-2 border-slate-300 hover:border-emerald-600 hover:bg-emerald-50 flex items-center justify-center flex-shrink-0 transition-colors group/chk focus:outline-none"
+                            aria-label={`Mark ${task.title} as done`}
+                          >
+                            <svg className="w-3.5 h-3.5 text-emerald-600 opacity-0 group-hover/chk:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+
+                          <div className="min-w-0">
+                            <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug truncate">
+                              {task.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                              <span>{task.eventName} · {task.vertical}</span>
+                              {task.status === 'blocked' && (
+                                <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-800">
+                                  Blocked
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Due Time / Overdue pill */}
+                        <div className="flex-shrink-0 text-right">
+                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border whitespace-nowrap ${
+                            isOverdue
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {task.dueTimeStr}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="clean-card p-6 text-center text-slate-500 space-y-1">
+                  <p className="text-sm font-bold text-slate-800">Nothing due today.</p>
+                  <p className="text-xs">Enjoy the break or check your upcoming shifts below. 🎉</p>
+                </div>
+              )}
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════
+                5. TO DO SECTION (Upcoming, Segmented Control)
+                ══════════════════════════════════════════════════════════ */}
+            <section className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-extrabold text-slate-900">To Do</h2>
+
+                {/* Segmented Control */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                  <button
+                    onClick={() => setTodoFilter('week')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      todoFilter === 'week' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    This week
+                  </button>
+                  <button
+                    onClick={() => setTodoFilter('later')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      todoFilter === 'later' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    Later
+                  </button>
+                  <button
+                    onClick={() => setTodoFilter('all')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      todoFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    All ({tasks.filter(t => t.group !== 'today').length})
+                  </button>
+                </div>
+              </div>
+
+              {upcomingTasks.length > 0 ? (
+                <div className="clean-card divide-y divide-slate-100 overflow-hidden shadow-xs">
+                  {upcomingTasks.map(task => (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        setActiveTask(task);
+                        setShowBlockerInput(false);
+                        setProofPhotoPreview(task.proofPhoto);
+                      }}
+                      className="task-row p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleComplete(task.id, e)}
+                          className="w-6 h-6 rounded-full border-2 border-slate-300 hover:border-emerald-600 hover:bg-emerald-50 flex items-center justify-center flex-shrink-0 transition-colors group/chk focus:outline-none"
+                          aria-label={`Mark ${task.title} as done`}
+                        >
+                          <svg className="w-3.5 h-3.5 text-emerald-600 opacity-0 group-hover/chk:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {/* Priority Dot only if P0 or P1 */}
+                            {task.priority === 'P0' && (
+                              <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="P0 Critical"></span>
+                            )}
+                            {task.priority === 'P1' && (
+                              <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" title="P1 High"></span>
+                            )}
+                            <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug truncate">
+                              {task.title}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {task.eventName} · {task.vertical}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex-shrink-0 text-right">
+                        <span className="text-[11px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                          {task.dueTimeStr}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="clean-card p-5 text-center text-xs text-slate-500">
+                  No upcoming tasks in this filter view.
+                </div>
+              )}
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════
+                7. MY UPCOMING SHIFTS (Only shown if shifts exist)
+                ══════════════════════════════════════════════════════════ */}
+            {shifts.length > 0 && (
+              <section className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-slate-900">My Upcoming Shifts</h2>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {shifts.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {shifts.map(shift => (
+                    <div
+                      key={shift.id}
+                      className={`clean-card p-4 space-y-2 border transition-all ${
+                        shift.isNear
+                          ? 'border-indigo-300 bg-gradient-to-r from-indigo-50/50 via-white to-white'
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🕒</span>
+                          <div>
+                            <span className="text-xs font-black text-slate-900 block leading-tight">
+                              {shift.date}
+                            </span>
+                            <span className="text-[11px] font-extrabold text-indigo-600 block mt-0.5">
+                              {shift.timeRange}
+                            </span>
+                          </div>
+                        </div>
+
+                        {shift.isNear && (
+                          <span className="pulse-badge text-[10px] font-extrabold tracking-wide uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ⚡ {shift.nearLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-600 gap-1">
+                        <div>
+                          <strong className="text-slate-800 font-semibold">Station: </strong>
+                          <span>{shift.station}</span>
+                        </div>
+                        <div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-[11px]">
+                            {shift.role}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════
+                8. RECENTLY COMPLETED (Collapsed Accordion)
+                ══════════════════════════════════════════════════════════ */}
+            <section className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full clean-card p-3.5 flex items-center justify-between text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black">✓</span>
+                  <span>Recently Completed ({completedTasks.length})</span>
+                </div>
+                <span className="text-xs text-slate-400">
+                  {showCompleted ? 'Hide ▲' : 'Show ▼'}
+                </span>
+              </button>
+
+              {showCompleted && (
+                <div className="mt-2 clean-card divide-y divide-slate-100 overflow-hidden bg-slate-50/50">
+                  {completedTasks.map(item => (
+                    <div key={item.id} className="p-3.5 flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-emerald-600 font-bold text-sm">✓</span>
+                        <span className="line-through truncate text-slate-500 font-medium">
+                          {item.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-[10px] text-slate-400">{item.completedAt}</span>
+                        <button
+                          onClick={() => handleReopenTask(item)}
+                          className="text-[11px] font-bold text-indigo-600 hover:underline"
+                        >
+                          Undo
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </main>
+
+          {/* ══════════════════════════════════════════════════════════
+              6. TASK DETAIL (Bottom Sheet on Mobile / Modal on Desktop)
+              ══════════════════════════════════════════════════════════ */}
+          {activeTask && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs">
+              <div
+                className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl p-6 space-y-5 shadow-2xl bottom-sheet-anim max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Grab handle for mobile */}
+                <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto sm:hidden -mt-2 mb-2"></div>
+
+                {/* Header with Title & Close */}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
+                        {activeTask.vertical}
+                      </span>
+                      {activeTask.priority === 'P0' && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
+                          P0 Critical
+                        </span>
+                      )}
+                      {activeTask.overdue && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">
+                          ⚠️ Overdue
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                      {activeTask.title}
+                    </h3>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTask(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100"
+                    aria-label="Close detail"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Description */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  {activeTask.description}
+                </div>
+
+                {/* Meta details */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Due Date</span>
+                    <span className="font-bold text-slate-800 block mt-0.5">{activeTask.dueTimeStr} ({activeTask.dueAt})</span>
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Assigned By</span>
+                    <span className="font-bold text-slate-800 block mt-0.5">{activeTask.assignedBy}</span>
+                  </div>
+                </div>
+
+                {/* Proof Photo Attachment */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Proof Photo (Optional)</span>
+                    <span className="text-[10px] text-slate-400">For physical setup & tasks</span>
+                  </div>
+
+                  {proofPhotoPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <img src={proofPhotoPreview} alt="Proof" className="w-full h-36 object-cover" />
+                      <button
+                        onClick={() => setProofPhotoPreview(null)}
+                        className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-xs px-2 py-1 rounded-lg backdrop-blur-xs font-bold"
+                      >
+                        Remove
+                      </button>
+                      <div className="p-2 bg-white text-[11px] text-emerald-700 font-bold flex items-center gap-1.5 border-t border-slate-200">
+                        <span>✓ Verification photo attached</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30 text-xs font-bold text-slate-600 hover:text-indigo-600 cursor-pointer transition-colors">
+                      <span>📸 Upload proof photo</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleSimulatePhotoUpload} />
+                    </label>
+                  )}
+                </div>
+
+                {/* Blocker reporting section */}
+                {showBlockerInput ? (
+                  <form onSubmit={handleReportBlocker} className="p-3.5 rounded-xl bg-red-50 border border-red-200 space-y-2">
+                    <label className="block text-xs font-bold text-red-900">
+                      What's blocking you?
+                    </label>
+                    <input
+                      type="text"
+                      value={blockedText}
+                      onChange={(e) => setBlockedText(e.target.value)}
+                      placeholder="e.g. Need key to Lab 4 or missing extension cord..."
+                      className="w-full bg-white border border-red-300 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowBlockerInput(false)}
+                        className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-black"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3.5 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-xs"
+                      >
+                        Submit to Risk Radar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowBlockerInput(true)}
+                      className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 hover:underline"
+                    >
+                      <span>⚠️ I'm blocked on this</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Big Action Buttons */}
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTask(null)}
+                    className="w-1/3 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleComplete(activeTask.id)}
+                    className="w-2/3 py-3 rounded-xl bg-black hover:bg-slate-800 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-2"
+                  >
+                    <span>✓ Mark as done</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              ANNOUNCEMENT FULL VIEW MODAL
+              ══════════════════════════════════════════════════════════ */}
+          {selectedAnnouncement && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+              <div className="w-full max-w-lg bg-white rounded-2xl p-6 space-y-4 shadow-2xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-xs font-bold text-indigo-700 border border-indigo-200">
+                    <span>{selectedAnnouncement.channelIcon}</span>
+                    <span>{selectedAnnouncement.channelLabel}</span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <h3 className="text-lg font-black text-slate-900 leading-snug">
+                  {selectedAnnouncement.title}
+                </h3>
+
+                <p className="text-xs text-slate-500 font-medium">
+                  Posted {selectedAnnouncement.postedTime} by <strong className="text-slate-800">{selectedAnnouncement.author}</strong>
+                </p>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                  {selectedAnnouncement.body}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              ALL ANNOUNCEMENTS LIST MODAL
+              ══════════════════════════════════════════════════════════ */}
+          {allAnnouncementsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+              <div className="w-full max-w-lg bg-white rounded-2xl p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <span>📢 Club Broadcasts & Announcements</span>
+                  </h3>
+                  <button
+                    onClick={() => setAllAnnouncementsModal(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {announcements.map(ann => (
+                    <div
+                      key={ann.id}
+                      onClick={() => {
+                        setSelectedAnnouncement(ann);
+                        setAllAnnouncementsModal(false);
+                      }}
+                      className="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-white cursor-pointer transition-colors space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-indigo-700">{ann.channelIcon} {ann.channelLabel}</span>
+                        <span className="text-slate-400">{ann.postedTime}</span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-900">{ann.title}</p>
+                      <p className="text-[11px] text-slate-600 line-clamp-2">{ann.preview}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setAllAnnouncementsModal(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              NOTIFICATIONS BELL DROPDOWN MODAL
+              ══════════════════════════════════════════════════════════ */}
+          {showNotifications && (
+            <div className="fixed inset-0 z-50 flex items-start justify-end p-4 pt-16 bg-slate-900/30 backdrop-blur-xs" onClick={() => setShowNotifications(false)}>
+              <div
+                className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-3 shadow-2xl border border-slate-200"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</h3>
+                  <button onClick={() => setShowNotifications(false)} className="text-xs text-slate-400 hover:text-black">✕</button>
+                </div>
+                <div className="space-y-2.5 text-xs">
+                  <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-100">
+                    <p className="font-bold text-indigo-950">Briefing moved to Hall B</p>
+                    <p className="text-[11px] text-indigo-800 mt-0.5">Please gather at 5:00 PM for radio allocations.</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="font-bold text-slate-900">1 Overdue Task Reminder</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">Signage at Gate 2 was due yesterday.</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="font-bold text-slate-900">Shift Scheduled Tomorrow</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">Registration Desk 2 from 9:00 AM – 1:00 PM.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              ASK PLANOVA (Volunteer-Scoped AI Floating Assistant)
+              ══════════════════════════════════════════════════════════ */}
+          {/* Floating Action Button (Desktop) */}
+          <button
+            onClick={() => setCopilotOpen(true)}
+            className="hidden sm:flex fixed bottom-6 right-6 z-40 items-center gap-2 px-4 py-3 rounded-full bg-black hover:bg-slate-800 text-white font-extrabold text-xs shadow-xl shadow-black/20 hover:scale-105 transition-all focus:outline-none"
+            title="Ask Planova AI"
+          >
+            <span className="text-indigo-400 text-sm">✦</span>
+            <span>Ask Planova</span>
+          </button>
+
+          {/* Volunteer AI Modal / Drawer */}
+          {copilotOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs">
+              <div
+                className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 space-y-4 shadow-2xl bottom-sheet-anim flex flex-col max-h-[85vh]"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-[#0E7490] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                      ✦
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">Ask Planova</h3>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Volunteer Assistant</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setCopilotOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-black">✕</button>
+                </div>
+
+                {/* Conversation Thread */}
+                <div className="flex-1 overflow-y-auto space-y-2.5 p-1 min-h-[220px]">
+                  {chatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-xl text-xs leading-relaxed ${
+                        msg.sender === 'user'
+                          ? 'bg-black text-white ml-8'
+                          : 'bg-slate-100 text-slate-900 mr-8 border border-slate-200'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick Prompts Pills */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    "When's my next shift?",
+                    "What do I need to do today?",
+                    "Where is volunteer check-in?",
+                    "Mark check-in signage done"
+                  ].map(prompt => (
+                    <button
+                      key={prompt}
+                      onClick={() => handleSendChat(prompt)}
+                      className="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition-colors"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Input box */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendChat();
+                  }}
+                  className="flex items-center gap-2 pt-1"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="Ask about your tasks or shifts..."
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3.5 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-slate-800"
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              MOBILE FIXED BOTTOM TAB BAR
+              ══════════════════════════════════════════════════════════ */}
+          <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] px-4 py-2 flex items-center justify-around shadow-lg">
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-black py-1"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span className="text-[10px] font-bold">Home</span>
+            </a>
+
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="flex flex-col items-center gap-1 text-indigo-600 font-extrabold py-1"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span className="text-[10px] font-black">My Tasks</span>
+            </a>
+
+            <button
+              onClick={() => setAllAnnouncementsModal(true)}
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-black py-1"
+            >
+              <div className="relative">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-600"></span>
+              </div>
+              <span className="text-[10px] font-bold">Broadcasts</span>
+            </button>
+
+            <button
+              onClick={() => setCopilotOpen(true)}
+              className="flex flex-col items-center gap-1 text-cyan-700 hover:text-cyan-900 py-1"
+            >
+              <span className="text-base font-black leading-none">✦</span>
+              <span className="text-[10px] font-bold">Ask AI</span>
+            </button>
+          </nav>
+
+          {/* ══════════════════════════════════════════════════════════
+              TOAST POPUP
+              ══════════════════════════════════════════════════════════ */}
+          {toast && (
+            <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              <div className={`px-4 py-2.5 rounded-2xl text-xs font-bold text-white shadow-2xl flex items-center gap-2 ${
+                toast.type === 'alert' ? 'bg-red-600' : 'bg-black'
+              }`}>
+                <span>{toast.msg}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<MyTasksApp />);
+  </script>
+</body>
+</html>

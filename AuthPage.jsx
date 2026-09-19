@@ -157,7 +157,8 @@ const PasswordField = ({ id, name, label, value, onChange, onBlur, placeholder, 
 
 export default function AuthPage({ onAuthSuccess }) {
   const [activeTab, setActiveTab] = useState('signin');
-  const [signInData, setSignInData] = useState({ username: '', password: '' });
+  const [signInRole, setSignInRole] = useState('admin');
+  const [signInData, setSignInData] = useState({ username: 'jenish', password: 'password123' });
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [touchedSignIn, setTouchedSignIn] = useState({ username: false, password: false });
 
@@ -217,9 +218,11 @@ export default function AuthPage({ onAuthSuccess }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Failed to sign in.');
       if (data.token) localStorage.setItem('token', data.token);
-      setApiSuccess('Signed in successfully! Redirecting…');
-      if (onAuthSuccess) onAuthSuccess(data);
-      else setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+
+      const isVolunteer = signInRole === 'volunteer' || signInData.username.toLowerCase().includes('volunteer') || signInData.username.toLowerCase().includes('aman');
+      setApiSuccess(isVolunteer ? 'Signed in as Volunteer! Opening My Tasks…' : 'Signed in as President! Opening Executive Dashboard…');
+      if (onAuthSuccess) onAuthSuccess({ ...data, role: isVolunteer ? 'volunteer' : 'admin' });
+      else setTimeout(() => { window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html'; }, 1000);
     } catch (err) {
       setApiError(err.message || 'An error occurred. Please try again.');
     } finally { setIsLoading(false); }
@@ -239,9 +242,11 @@ export default function AuthPage({ onAuthSuccess }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Registration failed.');
       if (data.token) localStorage.setItem('token', data.token);
-      setApiSuccess('Account created! Redirecting…');
-      if (onAuthSuccess) onAuthSuccess(data);
-      else setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+
+      const isVolunteer = signUpData.role === 'Volunteer';
+      setApiSuccess(isVolunteer ? 'Volunteer account created! Opening My Tasks…' : 'Account created! Opening Executive Dashboard…');
+      if (onAuthSuccess) onAuthSuccess({ ...data, role: isVolunteer ? 'volunteer' : 'admin' });
+      else setTimeout(() => { window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html'; }, 1000);
     } catch (err) {
       setApiError(err.message || 'An error occurred. Please try again.');
     } finally { setIsLoading(false); }
@@ -358,6 +363,43 @@ export default function AuthPage({ onAuthSuccess }) {
 
             {activeTab === 'signin' && (
               <form onSubmit={handleSignInSubmit} noValidate className="space-y-4">
+                {/* Role Selector: Admin vs Volunteer */}
+                <div>
+                  <label className="form-label">Sign in as</label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSignInRole('admin');
+                        setSignInData({ username: 'jenish', password: 'password123' });
+                      }}
+                      className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                        signInRole === 'admin'
+                          ? 'bg-black text-white shadow-xs'
+                          : 'text-slate-600 hover:text-black'
+                      }`}
+                    >
+                      <span>👑</span>
+                      <span>President (Admin)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSignInRole('volunteer');
+                        setSignInData({ username: 'aman.varma', password: 'password123' });
+                      }}
+                      className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                        signInRole === 'volunteer'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-black'
+                      }`}
+                    >
+                      <span>🤝</span>
+                      <span>Volunteer</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label htmlFor="signin-username" className="form-label">Username</label>
                   <input

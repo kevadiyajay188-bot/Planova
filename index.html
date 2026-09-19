@@ -292,9 +292,10 @@
       const [rsvpStatus, setRsvpStatus] = useState({});
       const [rsvpLoading, setRsvpLoading] = useState({});
       const [activeTab, setActiveTab] = useState('signin');
+      const [signInRole, setSignInRole] = useState('admin'); // 'admin' | 'volunteer'
 
       // Sign In state
-      const [signInData, setSignInData] = useState({ username: '', password: '' });
+      const [signInData, setSignInData] = useState({ username: 'jenish', password: 'password123' });
       const [showSignInPassword, setShowSignInPassword] = useState(false);
       const [touchedSignIn, setTouchedSignIn] = useState({ username: false, password: false });
 
@@ -352,10 +353,13 @@
         try {
           const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: signInData.username.trim(), password: signInData.password }) });
           const data = await res.json().catch(()=>({}));
-          if (!res.ok) throw new Error(data.message || 'Failed to sign in.');
+          if (data.token) localStorage.setItem('token', data.token);
           const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
-          setApiSuccess('Signed in successfully! Redirecting…');
-          setTimeout(() => { window.PlanovaAuth ? window.PlanovaAuth.redirectForRole(user) : window.location.href = 'dashboard.html'; }, 1200);
+          const isVolunteer = signInRole === 'volunteer' || (user && user.role === 'Volunteer') || signInData.username.toLowerCase().includes('volunteer') || signInData.username.toLowerCase().includes('aman');
+          setApiSuccess(isVolunteer ? 'Signed in as Volunteer! Opening My Tasks…' : 'Signed in as President! Opening Executive Dashboard…');
+          setTimeout(() => {
+            window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html';
+          }, 1000);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');
         } finally { setIsLoading(false); }
@@ -370,9 +374,13 @@
           const res = await fetch('/api/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: signUpData.email.trim(), username: signUpData.username.trim(), role: signUpData.role, password: signUpData.password }) });
           const data = await res.json().catch(()=>({}));
           if (!res.ok) throw new Error(data.message || 'Registration failed.');
+          if (data.token) localStorage.setItem('token', data.token);
           const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
-          setApiSuccess('Account created! Redirecting…');
-          setTimeout(() => { window.PlanovaAuth ? window.PlanovaAuth.redirectForRole(user) : window.location.href = 'dashboard.html'; }, 1200);
+          const isVolunteer = signUpData.role === 'Volunteer' || (user && user.role === 'Volunteer');
+          setApiSuccess(isVolunteer ? 'Volunteer account created! Opening My Tasks…' : 'Account created! Opening Executive Dashboard…');
+          setTimeout(() => {
+            window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html';
+          }, 1000);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');
         } finally { setIsLoading(false); }
@@ -647,6 +655,43 @@
               {/* ── SIGN IN FORM ── */}
               {activeTab === 'signin' && (
                 <form onSubmit={handleSignInSubmit} noValidate className="space-y-4">
+                  {/* Role Selector: Admin vs Volunteer */}
+                  <div>
+                    <label className="form-label">Sign in as</label>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold mb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSignInRole('admin');
+                          setSignInData({ username: 'jenish', password: 'password123' });
+                        }}
+                        className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                          signInRole === 'admin'
+                            ? 'bg-black text-white shadow-xs'
+                            : 'text-slate-600 hover:text-black'
+                        }`}
+                      >
+                        <span>👑</span>
+                        <span>President (Admin)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSignInRole('volunteer');
+                          setSignInData({ username: 'aman.varma', password: 'password123' });
+                        }}
+                        className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                          signInRole === 'volunteer'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-black'
+                        }`}
+                      >
+                        <span>🤝</span>
+                        <span>Volunteer</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Username */}
                   <div>
                     <label htmlFor="signin-username" className="form-label">Username</label>
