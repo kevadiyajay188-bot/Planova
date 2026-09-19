@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planova — Operations Dashboard</title>
+  <meta name="description" content="Planova campus club management dashboard with live metrics, portfolio tracking, Recharts analytics, and AI copilot in a clean, simple light theme with black buttons." />
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
+
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       PLANOVA — Clean Light Theme (All Black Buttons, No Purple)
+       ══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Clean Card Utility */
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* All-Black Action Buttons */
+    .btn-black {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #000000;
+      color: #FFFFFF;
+      font-weight: 700;
+      border-radius: 12px;
+      border: 1px solid #1E293B;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.20);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-black:hover:not(:disabled) {
+      background: #1E293B;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.30);
+    }
+    .btn-black:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
+      background: #0A0A0A;
+    }
+    .btn-black:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      height: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #F1F5F9;
+      border-radius: 999px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React Components script -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const {
+      ResponsiveContainer,
+      PieChart,
+      Pie,
+      Cell,
+      Tooltip,
+      BarChart,
+      Bar,
+      XAxis,
+      YAxis,
+      CartesianGrid,
+      ReferenceLine,
+      AreaChart,
+      Area,
+      Line
+    } = window.Recharts || {};
+
+    /* ─── 1. STATS ROW ──────────────────────────────────────────────────────── */
+    const DEFAULT_STATS = {
+      myTasksToday: { value: 6, trend: '+2 vs yesterday', trendUp: true },
+      overdue: { value: 2, trend: 'Needs action', isAlert: true },
+      openRisks: { value: 3, criticalCount: 1, label: '1 Critical' },
+      upcomingDeadlines: { value: 5, subtext: 'Next 7 days' },
+      activeEvents: { value: 3, subtext: 'Across 2 clubs' }
+    };
+
+    function StatsRow() {
+      const [stats, setStats] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        let isMounted = true;
+        async function fetchStats() {
+          try {
+            const res = await fetch('/api/dashboard/stats');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            if (isMounted) setStats(data);
+          } catch {
+            if (isMounted) setStats(DEFAULT_STATS);
+          } finally {
+            if (isMounted) setLoading(false);
+          }
+        }
+        fetchStats();
+        return () => { isMounted = false; };
+      }, []);
+
+      const data = stats || DEFAULT_STATS;
+      const hasCriticalRisks = (data.openRisks?.criticalCount || 0) > 0;
+
+      return (
+        <section aria-label="Quick Summary Metrics" className="w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* Card 1: My Tasks Today */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                <span>My Tasks Today</span>
+                <div className="w-8 h-8 rounded-lg bg-slate-100 text-black flex items-center justify-center font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+              </div>
+              <div className="my-2">
+                <span className="text-3xl font-extrabold text-black tracking-tight">{data.myTasksToday?.value ?? 0}</span>
+              </div>
+              <div className="flex items-center text-xs font-medium text-emerald-600">
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+                <span>{data.myTasksToday?.trend || 'On schedule'}</span>
+              </div>
+            </div>
+
+            {/* Card 2: Overdue Tasks */}
+            <div className={`clean-card p-5 flex flex-col justify-between ${
+              (data.overdue?.value || 0) > 0 ? 'border-red-200 bg-red-50/20' : ''
+            }`}>
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                <span>Overdue Tasks</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  (data.overdue?.value || 0) > 0 ? 'bg-red-100 text-[#DC2626]' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="my-2">
+                <span className={`text-3xl font-extrabold tracking-tight ${
+                  (data.overdue?.value || 0) > 0 ? 'text-[#DC2626]' : 'text-black'
+                }`}>
+                  {data.overdue?.value ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center text-xs font-medium text-red-600">
+                {(data.overdue?.value || 0) > 0 ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] mr-1.5 animate-ping"></span>
+                    <span>Immediate action needed</span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">Zero overdue items</span>
+                )}
+              </div>
+            </div>
+
+            {/* Card 3: Open Risks */}
+            <div className={`clean-card p-5 flex flex-col justify-between ${
+              hasCriticalRisks ? 'border-rose-200 bg-rose-50/20' : ''
+            }`}>
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                <span>Open Risks</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  hasCriticalRisks ? 'bg-red-100 text-[#B91C1C]' : 'bg-amber-100 text-[#D97706]'
+                }`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="my-2 flex items-baseline gap-2">
+                <span className={`text-3xl font-extrabold tracking-tight ${
+                  hasCriticalRisks ? 'text-[#B91C1C]' : 'text-black'
+                }`}>
+                  {data.openRisks?.value ?? 0}
+                </span>
+                {hasCriticalRisks && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#B91C1C] text-white">
+                    CRITICAL
+                  </span>
+                )}
+              </div>
+              <div className="text-xs font-medium text-slate-500">
+                {hasCriticalRisks ? (
+                  <span className="text-[#B91C1C] font-semibold">{data.openRisks?.label || '1 critical risk open'}</span>
+                ) : (
+                  <span>All risks low or mitigated</span>
+                )}
+              </div>
+            </div>
+
+            {/* Card 4: Upcoming Deadlines */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                <span>Upcoming Deadlines</span>
+                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="my-2">
+                <span className="text-3xl font-extrabold text-black tracking-tight">{data.upcomingDeadlines?.value ?? 0}</span>
+              </div>
+              <div className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-900"></span>
+                <span>{data.upcomingDeadlines?.subtext || 'Next 7 calendar days'}</span>
+              </div>
+            </div>
+
+            {/* Card 5: Active Events */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                <span>Active Events</span>
+                <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+              </div>
+              <div className="my-2">
+                <span className="text-3xl font-extrabold text-black tracking-tight">{data.activeEvents?.value ?? 0}</span>
+              </div>
+              <div className="text-xs font-medium text-slate-500">
+                <span>{data.activeEvents?.subtext || 'In active planning'}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* ─── 2. EVENTS PROGRESS BOARD ──────────────────────────────────────────── */
+    const PHASES = ['Concept', 'Approvals', 'Promotion', 'Logistics', 'Execution'];
+    const RISK_CONFIG = {
+      low: { color: '#64748B', label: 'Low Risk' },
+      medium: { color: '#D97706', label: 'Medium Risk' },
+      high: { color: '#EA580C', label: 'High Risk' },
+      critical: { color: '#B91C1C', label: 'Critical Risk' }
+    };
+
+    const DEFAULT_EVENTS = [
+      {
+        id: 'evt-1',
+        name: 'TechNova Hackathon 2026',
+        type: 'Hackathon',
+        typeBadgeColor: 'bg-slate-100 text-black border-slate-300',
+        daysLeft: 12,
+        percentComplete: 68,
+        phase: 'Logistics',
+        riskLevel: 'critical',
+        riskSummary: 'Auditorium AC permission pending',
+        status: 'in_progress',
+        topMembers: [
+          { name: 'Priya Patel', initials: 'PP', bg: 'bg-emerald-600' },
+          { name: 'Arjun Rao', initials: 'AR', bg: 'bg-slate-800' },
+          { name: 'Neha Sharma', initials: 'NS', bg: 'bg-zinc-700' }
+        ]
+      },
+      {
+        id: 'evt-2',
+        name: 'RoboQuest Championship',
+        type: 'Competition',
+        typeBadgeColor: 'bg-blue-50 text-[#2563EB] border-blue-200',
+        daysLeft: 24,
+        percentComplete: 45,
+        phase: 'Promotion',
+        riskLevel: 'medium',
+        riskSummary: 'Sponsorship confirmation delayed',
+        status: 'in_progress',
+        topMembers: [
+          { name: 'Dev Malik', initials: 'DM', bg: 'bg-cyan-700' },
+          { name: 'Kavya Sen', initials: 'KS', bg: 'bg-amber-600' },
+          { name: 'Rohan Jha', initials: 'RJ', bg: 'bg-rose-600' }
+        ]
+      },
+      {
+        id: 'evt-3',
+        name: 'Alumni Mentorship Mixer',
+        type: 'Networking',
+        typeBadgeColor: 'bg-emerald-50 text-[#059669] border-emerald-200',
+        daysLeft: 38,
+        percentComplete: 20,
+        phase: 'Approvals',
+        riskLevel: 'low',
+        riskSummary: 'Guest speaker invites sent',
+        status: 'upcoming',
+        topMembers: [
+          { name: 'Tanvi G', initials: 'TG', bg: 'bg-slate-700' },
+          { name: 'Siddharth V', initials: 'SV', bg: 'bg-slate-900' },
+          { name: 'Ananya M', initials: 'AM', bg: 'bg-teal-700' }
+        ]
+      }
+    ];
+
+    function EventsProgressBoard() {
+      const [events, setEvents] = useState(DEFAULT_EVENTS);
+      const [activeFilter, setActiveFilter] = useState('in_progress');
+
+      const filteredEvents = events.filter(e => {
+        if (activeFilter === 'all') return true;
+        return e.status === activeFilter;
+      });
+
+      const radius = 22;
+      const circumference = 2 * Math.PI * radius;
+
+      return (
+        <section aria-label="Events Portfolio" className="w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-black tracking-tight flex items-center gap-2">
+                <span>Events Portfolio</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                  {events.length} active
+                </span>
+              </h2>
+              <span className="hidden sm:inline-block text-xs text-slate-300">|</span>
+              <p className="hidden sm:inline-block text-xs text-slate-500">Live progress across milestones & phases</p>
+            </div>
+
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start sm:self-auto border border-[#E2E8F0]">
+              {[
+                { key: 'in_progress', label: 'In Progress' },
+                { key: 'upcoming', label: 'Upcoming' },
+                { key: 'completed', label: 'Completed' }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveFilter(tab.key)}
+                  className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    activeFilter === tab.key
+                      ? 'bg-black text-white shadow-xs'
+                      : 'text-slate-600 hover:text-black'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-thin">
+            {filteredEvents.map(evt => {
+              const risk = RISK_CONFIG[evt.riskLevel] || RISK_CONFIG.low;
+              const phaseIndex = PHASES.indexOf(evt.phase);
+              const strokeDashoffset = circumference - (evt.percentComplete / 100) * circumference;
+
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => alert(`Opening workspace for: ${evt.name}`)}
+                  className="clean-card min-w-[320px] max-w-[340px] flex-shrink-0 p-5 cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className={`inline-block px-2.5 py-0.5 text-[11px] font-bold rounded-md border ${evt.typeBadgeColor}`}>
+                        {evt.type}
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800">
+                        {evt.daysLeft}d left
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 line-clamp-1 hover:text-black transition-colors">{evt.name}</h3>
+                  </div>
+
+                  {/* Circular progress & Risk */}
+                  <div className="my-4 flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-[#E2E8F0]">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 52 52">
+                          <circle cx="26" cy="26" r={radius} stroke="#E2E8F0" strokeWidth="4" fill="transparent" />
+                          <circle
+                            cx="26"
+                            cy="26"
+                            r={radius}
+                            stroke="#000000"
+                            strokeWidth="4"
+                            fill="transparent"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="absolute text-[11px] font-extrabold text-black">{evt.percentComplete}%</span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">Task Completion</div>
+                        <div className="text-[11px] text-slate-500">{evt.percentComplete}% done</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: risk.color }}></span>
+                        <span className="text-[11px] font-bold text-slate-800">{risk.label}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[110px]">{evt.riskSummary}</span>
+                    </div>
+                  </div>
+
+                  {/* Phase Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-[10px] font-semibold text-slate-500 mb-1">
+                      <span>Phase: <strong className="text-black">{evt.phase}</strong></span>
+                      <span>Step {phaseIndex + 1} of 5</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1 w-full">
+                      {PHASES.map((p, idx) => (
+                        <div
+                          key={p}
+                          className={`h-1.5 rounded-full ${
+                            idx === phaseIndex ? 'bg-black' : idx < phaseIndex ? 'bg-slate-400' : 'bg-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Member avatars */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div className="flex items-center">
+                      <span className="text-[11px] text-slate-400 mr-2 font-medium">Team:</span>
+                      <div className="flex -space-x-2">
+                        {evt.topMembers.map((m, i) => (
+                          <div
+                            key={i}
+                            className={`h-6 w-6 rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white ${m.bg}`}
+                          >
+                            {m.initials}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-xs font-bold text-black flex items-center hover:underline">
+                      <span>Workspace →</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      );
+    }
+
+    /* ─── 3. CHARTS GRID (Recharts) ─────────────────────────────────────────── */
+    const DEFAULT_CHARTS_DATA = {
+      taskStatus: [
+        { name: 'Done', count: 41, color: '#059669' },
+        { name: 'Doing', count: 14, color: '#2563EB' },
+        { name: 'Review', count: 5, color: '#D97706' },
+        { name: 'Blocked', count: 2, color: '#DC2626' },
+        { name: 'To do', count: 6, color: '#94A3B8' }
+      ],
+      riskSeverity: [
+        { severity: 'Critical', count: 1, color: '#B91C1C' },
+        { severity: 'High', count: 2, color: '#EA580C' },
+        { severity: 'Medium', count: 4, color: '#D97706' },
+        { severity: 'Low', count: 7, color: '#64748B' }
+      ],
+      volunteerLoad: [
+        { name: 'Priya P.', tasks: 8 },
+        { name: 'Arjun R.', tasks: 7 },
+        { name: 'Dev M.', tasks: 5 },
+        { name: 'Neha S.', tasks: 4 },
+        { name: 'Kavya S.', tasks: 3 },
+        { name: 'Tanvi G.', tasks: 2 }
+      ],
+      completionTrend: [
+        { day: 'D1', actual: 4, planned: 3 },
+        { day: 'D3', actual: 9, planned: 7 },
+        { day: 'D5', actual: 15, planned: 12 },
+        { day: 'D7', actual: 21, planned: 18 },
+        { day: 'D9', actual: 28, planned: 25 },
+        { day: 'D11', actual: 34, planned: 32 },
+        { day: 'D13', actual: 39, planned: 38 },
+        { day: 'D14', actual: 41, planned: 42 }
+      ],
+      budget: {
+        event: 'TechNova Hackathon',
+        totalPlanned: 12000,
+        committed: 4500,
+        spent: 3200
+      },
+      eventsComparison: [
+        { name: 'TechNova', percent: 68, fill: '#000000' },
+        { name: 'RoboQuest', percent: 45, fill: '#2563EB' },
+        { name: 'Mixer', percent: 20, fill: '#059669' }
+      ]
+    };
+
+    function ChartsGrid() {
+      const data = DEFAULT_CHARTS_DATA;
+      const totalTasks = 68;
+      const hasRecharts = Boolean(window.Recharts);
+
+      return (
+        <section aria-label="Analytics" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-black tracking-tight flex items-center gap-2">
+                <span>Operational Analytics</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                  Live Metrics
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">Real-time health of tasks, workloads, pace, and risks</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Chart 1: Donut */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Task Status Breakdown</h3>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  60% Complete
+                </span>
+              </div>
+              <div className="relative h-48 w-full flex items-center justify-center">
+                {hasRecharts ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.taskStatus}
+                        dataKey="count"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={74}
+                        paddingAngle={3}
+                      >
+                        {data.taskStatus.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : null}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-black text-black leading-none">{totalTasks}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Tasks</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="text-[11px] font-semibold text-slate-700 mb-1.5">
+                  <strong>41 of 68 tasks complete</strong> (60% pace)
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  {data.taskStatus.map(s => (
+                    <div key={s.name} className="flex items-center gap-1.5 text-slate-600">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }}></span>
+                      <span>{s.name}: <strong>{s.count}</strong></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Chart 2: Risk Severity */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Risk Severity</h3>
+                <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                  Descending Severity
+                </span>
+              </div>
+              <div className="h-48 w-full">
+                {hasRecharts ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={data.riskSeverity} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#64748B' }} />
+                      <YAxis dataKey="severity" type="category" tick={{ fontSize: 11, fill: '#1E293B', fontWeight: 600 }} width={60} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                      />
+                      <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                        {data.riskSeverity.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : null}
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Critical risks trigger escalation</span>
+                <span className="font-bold text-black">14 Total Open</span>
+              </div>
+            </div>
+
+            {/* Chart 3: Volunteer Workload */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Volunteer Workload</h3>
+                <span className="text-[11px] font-bold text-[#DC2626] bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                  Overload &gt; 6 tasks
+                </span>
+              </div>
+              <div className="h-48 w-full">
+                {hasRecharts ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={data.volunteerLoad} margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
+                      <XAxis type="number" domain={[0, 10]} tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: '#1E293B' }} width={55} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                      />
+                      <ReferenceLine x={6} stroke="#DC2626" strokeDasharray="4 4" />
+                      <Bar dataKey="tasks" radius={[0, 6, 6, 0]}>
+                        {data.volunteerLoad.map((v, idx) => (
+                          <Cell key={idx} fill={v.tasks >= 6 ? '#DC2626' : '#000000'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : null}
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>2 members overloaded</span>
+                <button className="text-xs font-bold text-black hover:underline">Rebalance</button>
+              </div>
+            </div>
+
+            {/* Chart 4: Tasks Over Time */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Completion Pace (14d)</h3>
+                <div className="flex items-center gap-2 text-[10px] font-semibold">
+                  <span className="text-black font-bold">● Actual</span>
+                  <span className="text-slate-400">┄ Planned</span>
+                </div>
+              </div>
+              <div className="h-48 w-full">
+                {hasRecharts ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.completionTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#000000" stopOpacity={0.20}/>
+                          <stop offset="95%" stopColor="#000000" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                      />
+                      <Area type="monotone" dataKey="actual" stroke="#000000" strokeWidth={2.5} fill="url(#actualGrad)" />
+                      <Line type="monotone" dataKey="planned" stroke="#94A3B8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : null}
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Within 2% of planned pace</span>
+                <span className="font-bold text-emerald-600">On Track</span>
+              </div>
+            </div>
+
+            {/* Chart 5: Budget Tracker */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Event Budget Tracker</h3>
+                <span className="text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                  TechNova
+                </span>
+              </div>
+              <div className="h-48 flex flex-col justify-center">
+                <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                  <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Planned</div>
+                    <div className="text-sm font-extrabold text-black">$12,000</div>
+                  </div>
+                  <div className="p-2 bg-blue-50/60 rounded-lg border border-blue-100">
+                    <div className="text-[10px] uppercase font-bold text-blue-600">Committed</div>
+                    <div className="text-sm font-extrabold text-[#2563EB]">$4,500</div>
+                  </div>
+                  <div className="p-2 bg-emerald-50/60 rounded-lg border border-emerald-100">
+                    <div className="text-[10px] uppercase font-bold text-emerald-600">Spent</div>
+                    <div className="text-sm font-extrabold text-[#059669]">$3,200</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1.5">
+                    <span>Budget Utilized: 64%</span>
+                    <span>Remaining: $4,300</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex shadow-inner">
+                    <div className="bg-[#059669]" style={{ width: '27%' }}></div>
+                    <div className="bg-[#2563EB]" style={{ width: '37%' }}></div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500 font-medium">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#059669]"></span> Spent (27%)</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#2563EB]"></span> Committed (37%)</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>$8,000 sponsorship received</span>
+                <button className="text-xs font-bold text-black hover:underline">Ledger</button>
+              </div>
+            </div>
+
+            {/* Chart 6: Events Comparison */}
+            <div className="clean-card p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-900">Events Comparison</h3>
+                <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                  Portfolio View
+                </span>
+              </div>
+              <div className="h-48 w-full">
+                {hasRecharts ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.eventsComparison} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#1E293B', fontWeight: 600 }} />
+                      <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                      />
+                      <Bar dataKey="percent" radius={[6, 6, 0, 0]}>
+                        {data.eventsComparison.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : null}
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>TechNova closest to execution</span>
+                <span className="font-bold text-black">3 Events</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* ─── 4. MODULE QUICK-ACCESS GRID ───────────────────────────────────────── */
+    const MODULE_TILES = [
+      { id: 'tasks', title: 'Tasks', stat: '41 of 68 done', statusDot: '#2563EB', iconBg: 'bg-slate-100 text-black' },
+      { id: 'volunteers', title: 'Volunteers', stat: '20 active, 2 overloaded', statusDot: '#DC2626', iconBg: 'bg-slate-100 text-black' },
+      { id: 'meetings', title: 'Meetings', stat: 'Last: Core Sync, 2 days ago', statusDot: '#059669', iconBg: 'bg-slate-100 text-black' },
+      { id: 'deadlines', title: 'Deadlines', stat: '5 due this week', statusDot: '#D97706', iconBg: 'bg-slate-100 text-black' },
+      { id: 'documents', title: 'Documents', stat: '12 files, 2 indexing', statusDot: '#000000', iconBg: 'bg-slate-100 text-black' },
+      { id: 'risks', title: 'Risks', stat: '3 open (1 critical)', statusDot: '#B91C1C', iconBg: 'bg-red-50 text-[#B91C1C]' },
+      { id: 'announcements', title: 'Announcements', stat: 'Last sent: Registration open', statusDot: '#059669', iconBg: 'bg-slate-100 text-black' },
+      { id: 'knowledgeBase', title: 'Knowledge Base', stat: 'Ask a question about past events', statusDot: '#0E7490', iconBg: 'bg-cyan-50 text-[#0E7490]' }
+    ];
+
+    function ModuleGrid() {
+      return (
+        <section aria-label="Core Modules" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-black tracking-tight flex items-center gap-2">
+                <span>Core Modules</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                  8 Modules
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">Quick access with live operational metrics</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {MODULE_TILES.map(m => (
+              <button
+                key={m.id}
+                onClick={() => alert(`Opening ${m.title} module...`)}
+                className="group text-left clean-card p-4 flex flex-col justify-between h-32 focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <div className="flex items-start justify-between w-full">
+                  <span className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors">{m.title}</span>
+                  <div className="relative">
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: m.statusDot }}></span>
+                    {m.statusDot === '#B91C1C' && <span className="absolute -inset-0.5 rounded-full bg-red-400 animate-ping opacity-60"></span>}
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-50 flex items-center justify-between w-full">
+                  <p className="text-xs font-semibold text-slate-700 truncate pr-1">{m.stat}</p>
+                  <span className="text-slate-400 group-hover:text-black text-xs font-bold">→</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    /* ─── 5. ACTIVITY FEED ─────────────────────────────────────────────────── */
+    const DEFAULT_ACTIVITIES = [
+      { id: '1', actor: 'user', authorName: 'Priya Patel', text: "moved 'Poster design' to Done", timestamp: '10m ago', tag: 'TechNova' },
+      { id: '2', actor: 'ai', authorName: 'Planova AI', text: "created 9 tasks from 'Core Sync' meeting", timestamp: '2h ago', tag: 'Auto-Task', undoable: true },
+      { id: '3', actor: 'ai', authorName: 'Planova AI', text: 'raised a risk: permission letter pending', timestamp: '5h ago', tag: 'Risk Detection', undoable: true },
+      { id: '4', actor: 'user', authorName: 'Arjun Rao', text: "uploaded 'Sponsorship_Brochure.pdf'", timestamp: '1d ago', tag: 'Docs' }
+    ];
+
+    function ActivityFeed() {
+      const [acts, setActs] = useState(DEFAULT_ACTIVITIES);
+      const [undone, setUndone] = useState(new Set());
+
+      return (
+        <aside className="clean-card p-5 flex flex-col h-full">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-black tracking-tight flex items-center gap-2">
+                <span>Recent Activity</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800">Live</span>
+              </h2>
+              <p className="text-[11px] text-slate-500">Human & AI collaborative feed</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {acts.map(item => {
+              const isAI = item.actor === 'ai';
+              const isUndone = undone.has(item.id);
+
+              return (
+                <div key={item.id} className={`p-2.5 rounded-xl text-xs flex items-start gap-3 border ${
+                  isAI ? 'bg-cyan-50/60 border-cyan-200' : 'bg-slate-50 border-slate-100'
+                } ${isUndone ? 'opacity-40 line-through' : ''}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 ${
+                    isAI ? 'bg-[#0E7490]' : 'bg-black'
+                  }`}>
+                    {isAI ? '✦' : item.authorName[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-800 leading-snug">
+                      <strong className={isAI ? 'text-[#0E7490]' : 'text-black'}>{item.authorName}</strong> {item.text}
+                    </p>
+                    <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400">
+                      <span>{item.timestamp}</span>
+                      {isAI && item.undoable && !isUndone && (
+                        <button
+                          onClick={() => setUndone(prev => new Set(prev).add(item.id))}
+                          className="font-bold text-[#0E7490] hover:underline"
+                        >
+                          [Undo]
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      );
+    }
+
+    /* ─── 6. DASHBOARD ROOT ─────────────────────────────────────────────────── */
+    function Dashboard() {
+      const [copilotOpen, setCopilotOpen] = useState(false);
+      const [query, setQuery] = useState('');
+      const [messages, setMessages] = useState([
+        { role: 'ai', text: 'Hello Jenish! I am Planova Copilot. I can draft agendas, analyze open risks, or rebalance volunteer task assignments. How can I assist you today?' }
+      ]);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!query.trim()) return;
+        const msg = query;
+        setMessages(m => [...m, { role: 'user', text: msg }]);
+        setQuery('');
+        setTimeout(() => {
+          setMessages(m => [...m, { role: 'ai', text: `Analyzing "${msg}" across 8 modules... Verified 41 of 68 tasks are completed. All critical risks are flagged.` }]);
+        }, 500);
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {/* Top Bar with BIG LOGO & BIG WEBSITE NAME */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+            {/* BIG Logo & BIG Website Name */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center p-1.5 flex-shrink-0">
+                <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black text-xl">P</span>'; }} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-black leading-none">
+                    PLANOVA
+                  </h1>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                    IEEE Student Branch
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block mt-1">Campus Club Hub</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3.5">
+              <button
+                onClick={() => setCopilotOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 transition-colors"
+              >
+                <span>✦ Ask Planova AI</span>
+              </button>
+
+              {/* Profile with Role side-by-side */}
+              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                <div className="relative flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shadow-xs ring-2 ring-slate-200">
+                    J
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-extrabold text-black leading-tight">Jenish</span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase bg-black text-white shadow-xs">
+                    President
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            {/* 1. Greeting Bar */}
+            <section className="clean-card p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-black tracking-tight">
+                  Good morning, Jenish.
+                </h2>
+                <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 flex items-center gap-2">
+                  <span className="text-[#0E7490] font-bold">✦ AI Summary:</span> 3 tasks due today, 2 overdue, and TechNova's auditorium permission is still pending.
+                </p>
+              </div>
+              <div className="flex gap-2.5">
+                <button className="px-4 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl border border-[#E2E8F0] transition-colors">
+                  Sync
+                </button>
+                {/* BLACK Action Button */}
+                <button onClick={() => setCopilotOpen(true)} className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                  + Action
+                </button>
+              </div>
+            </section>
+
+            {/* 2. Top Stats Row */}
+            <StatsRow />
+
+            {/* 3. Events Progress Board */}
+            <EventsProgressBoard />
+
+            {/* Main Content Grid: Charts + Modules + Activity Feed */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-8 space-y-6">
+                <ChartsGrid />
+                <ModuleGrid />
+              </div>
+
+              <div className="lg:col-span-4 sticky top-20">
+                <ActivityFeed />
+              </div>
+            </div>
+          </main>
+
+          {/* Floating Ask Planova Button — BLACK */}
+          <div className="fixed bottom-6 right-6 z-40">
+            <button
+              onClick={() => setCopilotOpen(true)}
+              className="btn-black flex items-center gap-2.5 px-5 py-3 rounded-full text-white font-bold text-xs tracking-wide shadow-2xl border border-slate-700"
+            >
+              <span>✦ Ask Planova</span>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-300"></span>
+              </span>
+            </button>
+          </div>
+
+          {/* Slide-over Copilot Drawer */}
+          {copilotOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs" onClick={() => setCopilotOpen(false)}></div>
+              <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                <div className="w-screen max-w-md bg-white shadow-2xl border-l border-[#E2E8F0] flex flex-col justify-between">
+                  <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-black text-white">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-black">✦</span>
+                      <div>
+                        <h3 className="text-sm font-bold">Planova AI Copilot</h3>
+                        <p className="text-[10px] text-slate-300">Contextual Club Assistant</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setCopilotOpen(false)} className="text-slate-300 hover:text-white font-bold">✕</button>
+                  </div>
+
+                  <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
+                    {messages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-xs'
+                        }`}>
+                          {m.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex gap-2">
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      placeholder="Ask Planova AI..."
+                      className="flex-1 px-3.5 py-2.5 text-xs border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-slate-900"
+                    />
+                    {/* BLACK Send Button */}
+                    <button type="submit" className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                      Send
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<Dashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
