@@ -192,10 +192,20 @@ export default function ModuleGrid({ onSelectModule }) {
             onClick={() => {
               if (onSelectModule) {
                 onSelectModule(tile.id);
-              } else if (tile.id === 'documents') {
-                if (typeof window !== 'undefined') window.location.href = 'documents-review.html';
               } else {
-                alert(`Navigating to ${tile.title} module...`);
+                const routes = {
+                  tasks: 'tasks.html',
+                  volunteers: 'volunteers.html',
+                  meetings: 'meetings.html',
+                  deadlines: 'deadlines.html',
+                  documents: 'documents-review.html',
+                  risks: 'risks.html',
+                  announcements: 'announcements.html',
+                  knowledgeBase: 'knowledge.html'
+                };
+                if (typeof window !== 'undefined' && routes[tile.id]) {
+                  window.location.href = routes[tile.id];
+                }
               }
             }}
             aria-label={`${tile.title} module, ${tile.stat}`}

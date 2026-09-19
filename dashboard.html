@@ -972,11 +972,17 @@
               <button
                 key={m.id}
                 onClick={() => {
-                  if (m.id === 'documents') {
-                    window.location.href = 'documents-review.html';
-                  } else {
-                    alert(`Opening ${m.title} module...`);
-                  }
+                  const routes = {
+                    tasks: 'tasks.html',
+                    volunteers: 'volunteers.html',
+                    meetings: 'meetings.html',
+                    deadlines: 'deadlines.html',
+                    documents: 'documents-review.html',
+                    risks: 'risks.html',
+                    announcements: 'announcements.html',
+                    knowledgeBase: 'knowledge.html'
+                  };
+                  window.location.href = routes[m.id] || 'dashboard.html';
                 }}
                 className={`group text-left clean-card p-4 flex flex-col justify-between h-32 focus:outline-none focus:ring-2 focus:ring-black cursor-pointer hover:border-slate-400 transition-all ${
                   m.id === 'documents' ? 'hover:shadow-md border-slate-300' : ''
@@ -1076,6 +1082,7 @@
 
     /* ─── 6. DASHBOARD ROOT ─────────────────────────────────────────────────── */
     function Dashboard() {
+      const [sidebarOpen, setSidebarOpen] = useState(false);
       const [copilotOpen, setCopilotOpen] = useState(false);
       const [query, setQuery] = useState('');
       const [messages, setMessages] = useState([
@@ -1093,29 +1100,60 @@
         }, 500);
       };
 
+      const NAV_ITEMS = [
+        { name: 'Dashboard', path: 'dashboard.html', icon: '📊', active: true, badge: 'Home' },
+        { name: 'Tasks', path: 'tasks.html', icon: '📋', badge: '68 Total' },
+        { name: 'Volunteers', path: 'volunteers.html', icon: '👥', badge: '22 Members' },
+        { name: 'Meetings', path: 'meetings.html', icon: '🎙️', badge: '9 Meetings' },
+        { name: 'Deadlines', path: 'deadlines.html', icon: '⏰', badge: '5 This Week' },
+        { name: 'Document Review', path: 'documents-review.html', icon: '📄', badge: '2 Pending' },
+        { name: 'Risks', path: 'risks.html', icon: '⚠️', badge: '1 Critical' },
+        { name: 'Announcements', path: 'announcements.html', icon: '📢', badge: '12 Sent' },
+        { name: 'Knowledge Base', path: 'knowledge.html', icon: '🧠', badge: '24 Docs' }
+      ];
+
       return (
         <div className="min-h-screen bg-[#F8FAFC]">
-          {/* Top Bar with BIG LOGO & BIG WEBSITE NAME */}
+          {/* Top Bar with Navigation Menu, BIG LOGO & BIG WEBSITE NAME */}
           <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
-            {/* BIG Logo & BIG Website Name */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center p-1.5 flex-shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                title="Open Navigation Menu"
+                aria-label="Open Navigation Menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span className="hidden md:inline text-xs font-bold text-slate-800">Modules</span>
+              </button>
+
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center p-1.5 flex-shrink-0">
                 <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black text-xl">P</span>'; }} />
               </div>
               <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-black leading-none">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-black leading-none">
                     PLANOVA
                   </h1>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
                     IEEE Student Branch
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block mt-1">Campus Club Hub</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">Campus Club Hub</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3.5">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+              >
+                <span>Modules Directory</span>
+                <span className="text-[10px] bg-black text-white px-1.5 py-0.2 rounded font-black">8</span>
+              </button>
+
               <button
                 onClick={() => setCopilotOpen(true)}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 transition-colors"
@@ -1195,6 +1233,95 @@
               </span>
             </button>
           </div>
+
+          {/* Slide-over Left Navigation Sidebar Drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => setSidebarOpen(false)}></div>
+              <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
+                <div className="w-screen max-w-xs sm:max-w-sm bg-white shadow-2xl border-r border-[#E2E8F0] flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1">
+                          <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-black leading-tight">PLANOVA</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation Menu</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSidebarOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-black hover:bg-slate-200 transition-colors"
+                        aria-label="Close menu"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Navigation Items */}
+                    <nav className="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
+                      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Main Overview
+                      </div>
+                      {NAV_ITEMS.slice(0, 1).map(item => (
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold bg-black text-white shadow-xs transition-all"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-extrabold">
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+
+                      <div className="pt-4 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Admin Core Modules
+                      </div>
+                      {NAV_ITEMS.slice(1).map(item => (
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-black hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+                    </nav>
+                  </div>
+
+                  {/* Bottom User Info */}
+                  <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
+                        J
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-black leading-tight">Jenish</p>
+                        <p className="text-[10px] font-extrabold text-slate-500 uppercase">President (Admin)</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Live
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Slide-over Copilot Drawer */}
           {copilotOpen && (

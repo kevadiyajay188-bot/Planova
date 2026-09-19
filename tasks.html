@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tasks — Planova Admin</title>
+  <meta name="description" content="Cross-team task oversight, workload balancing, and admin governance for Planova campus club events.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: '#4F46E5',
+            ai: '#0E7490',
+            'status-todo': '#94A3B8',
+            'status-doing': '#2563EB',
+            'status-blocked': '#DC2626',
+            'status-review': '#D97706',
+            'status-done': '#059669',
+          }
+        }
+      }
+    }
+  </script>
+  <!-- React 18 & Babel Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F1729;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      transition: box-shadow 150ms ease, border-color 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    }
+    .btn-black {
+      background-color: #000000;
+      color: #FFFFFF;
+      transition: background-color 150ms ease;
+    }
+    .btn-black:hover {
+      background-color: #1E293B;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    const INITIAL_TASKS = [
+      { id: 'tsk-101', title: 'Confirm Main Auditorium acoustic testing & sound check', vertical: 'Logistics', owner: 'Priya Patel', ownerAvatar: 'PP', priority: 'critical', status: 'blocked', dueDate: '2026-09-18', overdue: true, aiCreated: false },
+      { id: 'tsk-102', title: 'Finalize Title & Gold Sponsor Tier agreement contracts', vertical: 'Sponsorship', owner: 'Dev Malik', ownerAvatar: 'DM', priority: 'high', status: 'review', dueDate: '2026-09-20', overdue: false, aiCreated: true },
+      { id: 'tsk-103', title: 'Submit Campus Safety & EMT coverage documentation', vertical: 'Logistics', owner: 'Tanvi Gaikwad', ownerAvatar: 'TG', priority: 'high', status: 'doing', dueDate: '2026-09-19', overdue: true, aiCreated: false },
+      { id: 'tsk-104', title: 'Deploy Hackathon portal live registration & RSVP dashboard', vertical: 'Technical', owner: 'Arjun Rao', ownerAvatar: 'AR', priority: 'high', status: 'done', dueDate: '2026-09-15', overdue: false, aiCreated: true },
+      { id: 'tsk-105', title: 'Draft opening keynote speaker itinerary & green-room logistics', vertical: 'Technical', owner: 'Kavya Sen', ownerAvatar: 'KS', priority: 'medium', status: 'doing', dueDate: '2026-09-22', overdue: false, aiCreated: false },
+      { id: 'tsk-106', title: 'Print campus signage banners and stage sponsor backdrops', vertical: 'Marketing', owner: 'Neha Sharma', ownerAvatar: 'NS', priority: 'medium', status: 'to_do', dueDate: '2026-09-25', overdue: false, aiCreated: false },
+      { id: 'tsk-107', title: 'Order badges, lanyard tags, and volunteer t-shirts', vertical: 'Operations', owner: 'Rohan Jha', ownerAvatar: 'RJ', priority: 'low', status: 'to_do', dueDate: '2026-09-26', overdue: false, aiCreated: true },
+      { id: 'tsk-108', title: 'Resolve power strip & high-amp breaker allocation for 60 teams', vertical: 'Logistics', owner: 'Priya Patel', ownerAvatar: 'PP', priority: 'critical', status: 'doing', dueDate: '2026-09-19', overdue: true, aiCreated: true },
+      { id: 'tsk-109', title: 'Coordinate catering food delivery & dietary wristband tagging', vertical: 'Operations', owner: 'Tanvi Gaikwad', ownerAvatar: 'TG', priority: 'medium', status: 'to_do', dueDate: '2026-09-27', overdue: false, aiCreated: false },
+      { id: 'tsk-110', title: 'Publish Instagram countdown teaser & hacker spotlight reels', vertical: 'Marketing', owner: 'Neha Sharma', ownerAvatar: 'NS', priority: 'low', status: 'done', dueDate: '2026-09-16', overdue: false, aiCreated: false },
+      { id: 'tsk-111', title: 'Configure judging portal scoring rubric & API benchmark webhooks', vertical: 'Technical', owner: 'Arjun Rao', ownerAvatar: 'AR', priority: 'high', status: 'doing', dueDate: '2026-09-23', overdue: false, aiCreated: true },
+      { id: 'tsk-112', title: 'Collect guest judge travel receipts & parking permit clearances', vertical: 'Sponsorship', owner: 'Dev Malik', ownerAvatar: 'DM', priority: 'low', status: 'to_do', dueDate: '2026-09-17', overdue: true, aiCreated: false }
+    ];
+
+    const MEMBERS = [
+      { name: 'Priya Patel', avatar: 'PP', vertical: 'Logistics' },
+      { name: 'Arjun Rao', avatar: 'AR', vertical: 'Technical' },
+      { name: 'Neha Sharma', avatar: 'NS', vertical: 'Marketing' },
+      { name: 'Dev Malik', avatar: 'DM', vertical: 'Sponsorship' },
+      { name: 'Rohan Jha', avatar: 'RJ', vertical: 'Operations' },
+      { name: 'Tanvi Gaikwad', avatar: 'TG', vertical: 'Logistics' },
+      { name: 'Kavya Sen', avatar: 'KS', vertical: 'Technical' }
+    ];
+
+    const NAV_ITEMS = [
+      { name: 'Dashboard', path: 'dashboard.html', icon: '📊', badge: 'Home' },
+      { name: 'Tasks', path: 'tasks.html', icon: '📋', active: true, badge: '68 Total' },
+      { name: 'Volunteers', path: 'volunteers.html', icon: '👥', badge: '22 Members' },
+      { name: 'Meetings', path: 'meetings.html', icon: '🎙️', badge: '9 Meetings' },
+      { name: 'Deadlines', path: 'deadlines.html', icon: '⏰', badge: '5 This Week' },
+      { name: 'Document Review', path: 'documents-review.html', icon: '📄', badge: '2 Pending' },
+      { name: 'Risks', path: 'risks.html', icon: '⚠️', badge: '1 Critical' },
+      { name: 'Announcements', path: 'announcements.html', icon: '📢', badge: '12 Sent' },
+      { name: 'Knowledge Base', path: 'knowledge.html', icon: '🧠', badge: '24 Docs' }
+    ];
+
+    const COLUMNS = [
+      { id: 'to_do', label: 'To do', color: '#94A3B8', bg: 'bg-slate-100 text-slate-700' },
+      { id: 'doing', label: 'Doing', color: '#2563EB', bg: 'bg-blue-50 text-blue-700' },
+      { id: 'blocked', label: 'Blocked', color: '#DC2626', bg: 'bg-red-50 text-red-700' },
+      { id: 'review', label: 'Review', color: '#D97706', bg: 'bg-amber-50 text-amber-700' },
+      { id: 'done', label: 'Done', color: '#059669', bg: 'bg-emerald-50 text-emerald-700' }
+    ];
+
+    const PRIORITY_BADGES = {
+      low: { label: 'Low', color: '#64748B', bg: 'bg-slate-100 text-slate-600' },
+      medium: { label: 'Medium', color: '#D97706', bg: 'bg-amber-100 text-amber-800' },
+      high: { label: 'High', color: '#EA580C', bg: 'bg-orange-100 text-orange-800' },
+      critical: { label: 'Critical', color: '#B91C1C', bg: 'bg-red-100 text-red-800' }
+    };
+
+    const formatDate = (d) => {
+      if (!d) return '';
+      const parts = d.split('-');
+      if (parts.length === 3) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const m = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return `${months[m] || parts[1]} ${day}`;
+      }
+      return d;
+    };
+
+    function TasksApp() {
+      const isAdmin = true;
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [loading, setLoading] = useState(true);
+
+      // Data state
+      const [tasks, setTasks] = useState(INITIAL_TASKS);
+      const [view, setView] = useState('board'); // 'board' | 'list' | 'timeline'
+
+      // Filters
+      const [selectedVertical, setSelectedVertical] = useState('all');
+      const [selectedOwner, setSelectedOwner] = useState('all');
+      const [selectedPriority, setSelectedPriority] = useState('all');
+      const [selectedStatus, setSelectedStatus] = useState('all');
+      const [overdueOnly, setOverdueOnly] = useState(false);
+
+      // Bulk Selection
+      const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
+
+      // Modals
+      const [bulkReassignModal, setBulkReassignModal] = useState(false);
+      const [bulkDeadlineModal, setBulkDeadlineModal] = useState(false);
+      const [reassignTargetOwner, setReassignTargetOwner] = useState(MEMBERS[0].name);
+      const [bulkTargetDeadline, setBulkTargetDeadline] = useState('2026-09-24');
+
+      // Dropout Modal
+      const [dropoutModal, setDropoutModal] = useState(false);
+      const [dropoutFrom, setDropoutFrom] = useState(MEMBERS[0].name);
+      const [dropoutTo, setDropoutTo] = useState(MEMBERS[1].name);
+
+      // Override / Force Close Modal
+      const [overrideModal, setOverrideModal] = useState(false);
+      const [overrideTask, setOverrideTask] = useState(null);
+      const [overrideNote, setOverrideNote] = useState('');
+
+      // Toast
+      const [toast, setToast] = useState(null);
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      // Loading simulator
+      useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 400);
+        return () => clearTimeout(timer);
+      }, []);
+
+      // Filtered Tasks (AND logic)
+      const filteredTasks = useMemo(() => {
+        return tasks.filter(t => {
+          if (selectedVertical !== 'all' && t.vertical !== selectedVertical) return false;
+          if (selectedOwner !== 'all' && t.owner !== selectedOwner) return false;
+          if (selectedPriority !== 'all' && t.priority !== selectedPriority) return false;
+          if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
+          if (overdueOnly && !t.overdue) return false;
+          return true;
+        });
+      }, [tasks, selectedVertical, selectedOwner, selectedPriority, selectedStatus, overdueOnly]);
+
+      const overdueCount = useMemo(() => tasks.filter(t => t.overdue && t.status !== 'done').length, [tasks]);
+
+      const toggleSelect = (id) => {
+        setSelectedTaskIds(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      };
+
+      const selectAllVisible = () => {
+        if (selectedTaskIds.size === filteredTasks.length) {
+          setSelectedTaskIds(new Set());
+        } else {
+          setSelectedTaskIds(new Set(filteredTasks.map(t => t.id)));
+        }
+      };
+
+      const handleBulkReassign = () => {
+        if (!selectedTaskIds.size) return;
+        const targetObj = MEMBERS.find(m => m.name === reassignTargetOwner);
+        setTasks(prev => prev.map(t => {
+          if (selectedTaskIds.has(t.id)) {
+            return { ...t, owner: targetObj.name, ownerAvatar: targetObj.avatar };
+          }
+          return t;
+        }));
+        showToast(`Reassigned ${selectedTaskIds.size} tasks to ${reassignTargetOwner}.`);
+        setSelectedTaskIds(new Set());
+        setBulkReassignModal(false);
+      };
+
+      const handleBulkDeadline = () => {
+        if (!selectedTaskIds.size) return;
+        setTasks(prev => prev.map(t => {
+          if (selectedTaskIds.has(t.id)) {
+            return { ...t, dueDate: bulkTargetDeadline, overdue: new Date(bulkTargetDeadline) < new Date('2026-09-19') };
+          }
+          return t;
+        }));
+        showToast(`Updated deadline for ${selectedTaskIds.size} tasks to ${bulkTargetDeadline}.`);
+        setSelectedTaskIds(new Set());
+        setBulkDeadlineModal(false);
+      };
+
+      const handleDropoutReassign = () => {
+        const count = tasks.filter(t => t.owner === dropoutFrom && t.status !== 'done').length;
+        if (count === 0) {
+          showToast(`No open tasks found for ${dropoutFrom}.`);
+          setDropoutModal(false);
+          return;
+        }
+        const targetObj = MEMBERS.find(m => m.name === dropoutTo);
+        setTasks(prev => prev.map(t => {
+          if (t.owner === dropoutFrom && t.status !== 'done') {
+            return { ...t, owner: targetObj.name, ownerAvatar: targetObj.avatar };
+          }
+          return t;
+        }));
+        showToast(`Transferred ${count} open tasks from ${dropoutFrom} to ${dropoutTo}.`);
+        setDropoutModal(false);
+      };
+
+      const handleOverrideClose = () => {
+        if (!overrideTask || !overrideNote.trim()) return;
+        setTasks(prev => prev.map(t => {
+          if (t.id === overrideTask.id) {
+            return { ...t, status: 'done', overdue: false, overrideNote: overrideNote.trim(), closedByAdmin: true };
+          }
+          return t;
+        }));
+        showToast(`Task overridden & closed by President. Logged audit note.`);
+        setOverrideModal(false);
+        setOverrideTask(null);
+        setOverrideNote('');
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {/* Top Bar */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                title="Open Navigation Menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span className="hidden md:inline text-xs font-bold text-slate-800">Modules</span>
+              </button>
+
+              <a href="dashboard.html" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1 flex-shrink-0">
+                  <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-black leading-none">PLANOVA</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                      TechNova 2026
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">
+                    Tasks Governance
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="dashboard.html"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors border border-slate-200"
+              >
+                ← Dashboard
+              </a>
+
+              {/* Profile with President Role */}
+              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                <div className="relative flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    J
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-black leading-tight">Jenish</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase bg-black text-white shadow-xs">
+                    President
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <a href="dashboard.html" className="hover:text-black transition-colors">Dashboard</a>
+              <span>/</span>
+              <span className="text-black font-bold">Tasks</span>
+            </nav>
+
+            {/* PAGE HEADER PATTERN: [Bold page title] [light-gray count/status pill] + subtitle */}
+            <div className="clean-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#0F1729] tracking-tight">
+                    Tasks
+                  </h1>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                    68 total
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Every task across all verticals with administrative oversight and reassignment controls.
+                </p>
+              </div>
+
+              {/* Admin-only Dropout Reassign Button */}
+              {isAdmin && (
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => setDropoutModal(true)}
+                    className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-300 transition-colors"
+                  >
+                    <span>🔄 Member Dropped Out?</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* FILTER BAR & VIEW TOGGLE */}
+            <div className="clean-card p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                  {/* Pinned Overdue Chip */}
+                  <button
+                    onClick={() => setOverdueOnly(!overdueOnly)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                      overdueOnly
+                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                        : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span>Overdue ({overdueCount})</span>
+                  </button>
+
+                  {/* Vertical Filter */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-400 font-medium">Vertical:</span>
+                    <select
+                      value={selectedVertical}
+                      onChange={e => setSelectedVertical(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-black cursor-pointer"
+                    >
+                      <option value="all">All Verticals</option>
+                      <option value="Logistics">Logistics</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Technical">Technical</option>
+                      <option value="Sponsorship">Sponsorship</option>
+                      <option value="Operations">Operations</option>
+                    </select>
+                  </div>
+
+                  {/* Owner Filter */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-400 font-medium">Owner:</span>
+                    <select
+                      value={selectedOwner}
+                      onChange={e => setSelectedOwner(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-black cursor-pointer"
+                    >
+                      <option value="all">All Owners</option>
+                      {MEMBERS.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Priority Filter */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-400 font-medium">Priority:</span>
+                    <select
+                      value={selectedPriority}
+                      onChange={e => setSelectedPriority(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-black cursor-pointer"
+                    >
+                      <option value="all">All Priorities</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-400 font-medium">Status:</span>
+                    <select
+                      value={selectedStatus}
+                      onChange={e => setSelectedStatus(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-black cursor-pointer"
+                    >
+                      <option value="all">All Statuses</option>
+                      {COLUMNS.map(c => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {(selectedVertical !== 'all' || selectedOwner !== 'all' || selectedPriority !== 'all' || selectedStatus !== 'all' || overdueOnly) && (
+                    <button
+                      onClick={() => {
+                        setSelectedVertical('all');
+                        setSelectedOwner('all');
+                        setSelectedPriority('all');
+                        setSelectedStatus('all');
+                        setOverdueOnly(false);
+                      }}
+                      className="text-xs font-bold text-slate-500 hover:text-black underline ml-1"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                  <button
+                    onClick={() => setView('board')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      view === 'board' ? 'bg-black text-white shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    Board
+                  </button>
+                  <button
+                    onClick={() => setView('list')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      view === 'list' ? 'bg-black text-white shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    List
+                  </button>
+                  <button
+                    onClick={() => setView('timeline')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      view === 'timeline' ? 'bg-black text-white shadow-xs' : 'text-slate-600 hover:text-black'
+                    }`}
+                  >
+                    Timeline
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin Bulk Actions Banner */}
+              {isAdmin && selectedTaskIds.size > 0 && (
+                <div className="bg-slate-900 text-white rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-brand text-white px-2 py-0.5 rounded font-black text-[10px]">
+                      {selectedTaskIds.size} SELECTED
+                    </span>
+                    <span className="text-slate-300">Choose an administrative action:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setBulkReassignModal(true)}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-colors"
+                    >
+                      Bulk Reassign Owner
+                    </button>
+                    <button
+                      onClick={() => setBulkDeadlineModal(true)}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-colors"
+                    >
+                      Bulk Change Deadline
+                    </button>
+                    <button
+                      onClick={() => setSelectedTaskIds(new Set())}
+                      className="text-slate-400 hover:text-white px-2 py-1 font-semibold"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* SKELETON LOADER */}
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="clean-card p-4 h-64 animate-pulse space-y-3">
+                    <div className="h-4 bg-slate-200 rounded w-24"></div>
+                    <div className="h-20 bg-slate-100 rounded-xl"></div>
+                    <div className="h-20 bg-slate-100 rounded-xl"></div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredTasks.length === 0 ? (
+              /* EMPTY STATE */
+              <div className="clean-card p-12 text-center max-w-lg mx-auto my-8">
+                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+                  🔍
+                </div>
+                <h3 className="text-base font-bold text-slate-900">No tasks match your filter criteria</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Try clearing some filter tags or selecting "All Verticals" to inspect other areas of the project.
+                </p>
+                <button
+                  onClick={() => {
+                    setSelectedVertical('all');
+                    setSelectedOwner('all');
+                    setSelectedPriority('all');
+                    setSelectedStatus('all');
+                    setOverdueOnly(false);
+                  }}
+                  className="mt-4 px-4 py-2 bg-black text-white text-xs font-bold rounded-xl"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* 1. BOARD VIEW */}
+                {view === 'board' && (
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+                    {COLUMNS.map(col => {
+                      const colTasks = filteredTasks.filter(t => t.status === col.id);
+                      return (
+                        <div key={col.id} className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[500px]">
+                          {/* Column Header */}
+                          <div className="flex items-center justify-between mb-3 px-1">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color }}></span>
+                              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">{col.label}</h3>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
+                              {colTasks.length}
+                            </span>
+                          </div>
+
+                          {/* Task Cards */}
+                          <div className="space-y-3 flex-1">
+                            {colTasks.map(task => {
+                              const isSelected = selectedTaskIds.has(task.id);
+                              const pri = PRIORITY_BADGES[task.priority] || PRIORITY_BADGES.medium;
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`clean-card p-3.5 bg-white relative group cursor-pointer ${
+                                    isSelected ? 'ring-2 ring-brand border-brand' : ''
+                                  } ${task.overdue && task.status !== 'done' ? 'border-red-200' : ''}`}
+                                >
+                                  {/* Top Row: Bulk Select Checkbox + AI Badge + Priority */}
+                                  <div className="flex items-center justify-between gap-1 mb-2">
+                                    <div className="flex items-center gap-1.5">
+                                      {isAdmin && (
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => toggleSelect(task.id)}
+                                          className="rounded border-slate-300 text-brand focus:ring-brand w-3.5 h-3.5 cursor-pointer"
+                                        />
+                                      )}
+                                      {task.aiCreated && (
+                                        <span className="text-[9px] font-black tracking-wide px-1.5 py-0.5 rounded bg-cyan-50 text-[#0E7490] border border-cyan-200" title="Created automatically by Planova AI">
+                                          ✦ AI
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-medium text-slate-400">
+                                        {task.vertical}
+                                      </span>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pri.bg}`}>
+                                      {pri.label}
+                                    </span>
+                                  </div>
+
+                                  {/* Title */}
+                                  <h4 className="text-xs font-bold text-slate-900 leading-snug mb-3">
+                                    {task.title}
+                                  </h4>
+
+                                  {/* Bottom Row: Owner Avatar + Due Date + Admin Override */}
+                                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden" title={`Assigned to ${task.owner}`}>
+                                      <div className="w-5 h-5 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                        {task.ownerAvatar}
+                                      </div>
+                                      <span className="text-[11px] font-medium text-slate-600 truncate">
+                                        {task.owner}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      <span className={`text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                                        task.overdue && task.status !== 'done' ? 'text-red-600 font-extrabold' : 'text-slate-500'
+                                      }`}>
+                                        {task.overdue && task.status !== 'done' ? '⚠️ ' : ''}{formatDate(task.dueDate)}
+                                      </span>
+
+                                      {/* Admin Override Action */}
+                                      {task.status !== 'done' && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOverrideTask(task);
+                                            setOverrideModal(true);
+                                          }}
+                                          className="hidden group-hover:inline-block text-[10px] font-bold text-slate-600 hover:text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 transition-all"
+                                          title="Admin Override & Close Task"
+                                        >
+                                          Close
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 2. LIST VIEW */}
+                {view === 'list' && (
+                  <div className="clean-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                          <tr>
+                            {isAdmin && (
+                              <th className="p-3 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTaskIds.size === filteredTasks.length && filteredTasks.length > 0}
+                                  onChange={selectAllVisible}
+                                  className="rounded border-slate-300 text-brand focus:ring-brand w-3.5 h-3.5 cursor-pointer"
+                                />
+                              </th>
+                            )}
+                            <th className="p-3">Title</th>
+                            <th className="p-3">Owner</th>
+                            <th className="p-3">Vertical</th>
+                            <th className="p-3">Priority</th>
+                            <th className="p-3">Due Date</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3">Source</th>
+                            {isAdmin && <th className="p-3 text-right">Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredTasks.map(task => {
+                            const isSelected = selectedTaskIds.has(task.id);
+                            const pri = PRIORITY_BADGES[task.priority] || PRIORITY_BADGES.medium;
+                            const col = COLUMNS.find(c => c.id === task.status) || COLUMNS[0];
+                            return (
+                              <tr key={task.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? 'bg-indigo-50/40' : ''}`}>
+                                {isAdmin && (
+                                  <td className="p-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleSelect(task.id)}
+                                      className="rounded border-slate-300 text-brand focus:ring-brand w-3.5 h-3.5 cursor-pointer"
+                                    />
+                                  </td>
+                                )}
+                                <td className="p-3 font-semibold text-slate-900 max-w-xs">
+                                  {task.title}
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center">
+                                      {task.ownerAvatar}
+                                    </span>
+                                    <span className="font-medium text-slate-700">{task.owner}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-slate-600 font-medium">{task.vertical}</td>
+                                <td className="p-3">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${pri.bg}`}>
+                                    {pri.label}
+                                  </span>
+                                </td>
+                                <td className={`p-3 font-medium ${task.overdue && task.status !== 'done' ? 'text-red-600 font-bold' : 'text-slate-600'}`}>
+                                  {task.dueDate} {task.overdue && task.status !== 'done' ? '⚠️' : ''}
+                                </td>
+                                <td className="p-3">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${col.bg}`}>
+                                    {col.label}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  {task.aiCreated ? (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-50 text-[#0E7490] border border-cyan-200">
+                                      ✦ AI
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                                      Human
+                                    </span>
+                                  )}
+                                </td>
+                                {isAdmin && (
+                                  <td className="p-3 text-right">
+                                    {task.status !== 'done' ? (
+                                      <button
+                                        onClick={() => {
+                                          setOverrideTask(task);
+                                          setOverrideModal(true);
+                                        }}
+                                        className="text-[11px] font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors border border-slate-200"
+                                      >
+                                        Override Close
+                                      </button>
+                                    ) : (
+                                      <span className="text-emerald-600 font-bold text-[11px]">✓ Done</span>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. TIMELINE VIEW */}
+                {view === 'timeline' && (
+                  <div className="clean-card p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">Gantt Milestone Horizon</h3>
+                        <p className="text-xs text-slate-500">Cross-team schedule with milestone dependencies</p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Logistics</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Technical</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Sponsorship</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Marketing</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      {filteredTasks.map((t) => {
+                        const day = parseInt(t.dueDate.split('-')[2], 10);
+                        const leftPercent = Math.min(Math.max((day - 14) * 7, 5), 85);
+                        const widthPercent = 20;
+                        return (
+                          <div key={t.id} className="flex items-center gap-4 text-xs py-1 border-b border-slate-50">
+                            <div className="w-48 truncate font-bold text-slate-800" title={t.title}>
+                              {t.title}
+                            </div>
+                            <div className="flex-1 bg-slate-100 h-7 rounded-lg relative overflow-hidden flex items-center">
+                              <div
+                                className={`absolute h-5 rounded-md px-2 flex items-center justify-between text-white text-[10px] font-bold shadow-xs ${
+                                  t.vertical === 'Logistics' ? 'bg-blue-600' :
+                                  t.vertical === 'Technical' ? 'bg-emerald-600' :
+                                  t.vertical === 'Sponsorship' ? 'bg-purple-600' : 'bg-amber-600'
+                                }`}
+                                style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                              >
+                                <span className="truncate">{t.owner}</span>
+                                <span className="text-[9px] opacity-90">{t.dueDate.slice(5)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+          {/* ADMIN MODAL 1: Bulk Reassign */}
+          {bulkReassignModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <h3 className="text-lg font-bold text-slate-900">Bulk Reassign Tasks</h3>
+                <p className="text-xs text-slate-500">
+                  Reassign all <strong className="text-black">{selectedTaskIds.size}</strong> selected tasks to a new team member.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">New Assignee:</label>
+                  <select
+                    value={reassignTargetOwner}
+                    onChange={e => setReassignTargetOwner(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black"
+                  >
+                    {MEMBERS.map(m => (
+                      <option key={m.name} value={m.name}>{m.name} ({m.vertical})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setBulkReassignModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkReassign}
+                    className="btn-black px-4 py-2 text-xs font-bold rounded-xl"
+                  >
+                    Confirm Reassignment
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN MODAL 2: Bulk Deadline */}
+          {bulkDeadlineModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <h3 className="text-lg font-bold text-slate-900">Bulk Reschedule Deadlines</h3>
+                <p className="text-xs text-slate-500">
+                  Update the target due date for all <strong className="text-black">{selectedTaskIds.size}</strong> selected tasks.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">New Deadline:</label>
+                  <input
+                    type="date"
+                    value={bulkTargetDeadline}
+                    onChange={e => setBulkTargetDeadline(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setBulkDeadlineModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkDeadline}
+                    className="btn-black px-4 py-2 text-xs font-bold rounded-xl"
+                  >
+                    Update Deadlines
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN MODAL 3: Member Dropout Reassign */}
+          {dropoutModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔄</span>
+                  <h3 className="text-lg font-bold text-slate-900">Member Dropout Task Transfer</h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  When a member withdraws or is absent, reassign all their open tasks in one action.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Dropped Out Member:</label>
+                    <select
+                      value={dropoutFrom}
+                      onChange={e => setDropoutFrom(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black"
+                    >
+                      {MEMBERS.map(m => (
+                        <option key={m.name} value={m.name}>{m.name} ({m.vertical})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Transfer All Tasks To:</label>
+                    <select
+                      value={dropoutTo}
+                      onChange={e => setDropoutTo(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black"
+                    >
+                      {MEMBERS.filter(m => m.name !== dropoutFrom).map(m => (
+                        <option key={m.name} value={m.name}>{m.name} ({m.vertical})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setDropoutModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDropoutReassign}
+                    className="btn-black px-4 py-2 text-xs font-bold rounded-xl"
+                  >
+                    Execute Transfer
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN MODAL 4: Override / Force Close */}
+          {overrideModal && overrideTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="text-lg font-bold text-slate-900">Admin Override Closure</h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  You are manually closing <strong className="text-black">"{overrideTask.title}"</strong> without the owner marking it done. This will be logged to the activity audit feed.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Required Audit Note / Justification:</label>
+                  <textarea
+                    rows="3"
+                    value={overrideNote}
+                    onChange={e => setOverrideNote(e.target.value)}
+                    placeholder="e.g. Verified auditorium permit verbally with Dean's office; physical stamp received..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-black text-slate-900"
+                  ></textarea>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setOverrideModal(false);
+                      setOverrideTask(null);
+                      setOverrideNote('');
+                    }}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleOverrideClose}
+                    disabled={!overrideNote.trim()}
+                    className="btn-black px-4 py-2 text-xs font-bold rounded-xl disabled:opacity-50"
+                  >
+                    Confirm Override
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Sidebar Drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => setSidebarOpen(false)}></div>
+              <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
+                <div className="w-screen max-w-xs sm:max-w-sm bg-white shadow-2xl border-r border-[#E2E8F0] flex flex-col justify-between">
+                  <div>
+                    <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1">
+                          <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-black leading-tight">PLANOVA</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation Menu</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-black hover:bg-slate-200 transition-colors">
+                        ✕
+                      </button>
+                    </div>
+
+                    <nav className="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
+                      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Main Overview
+                      </div>
+                      {NAV_ITEMS.slice(0, 1).map(item => (
+                        <a key={item.name} href={item.path} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-black hover:bg-slate-100 transition-all">
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+
+                      <div className="pt-4 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Admin Core Modules
+                      </div>
+                      {NAV_ITEMS.slice(1).map(item => (
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            item.active ? 'bg-black text-white shadow-xs' : 'text-slate-700 hover:text-black hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                            item.active ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+                    </nav>
+                  </div>
+
+                  <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
+                        J
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-black leading-tight">Jenish</p>
+                        <p className="text-[10px] font-extrabold text-slate-500 uppercase">{isAdmin ? 'President (Admin)' : 'Member'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce border border-slate-700">
+              <span className="text-emerald-400">✓</span>
+              <span>{toast}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TasksApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base — Planova Admin</title>
+  <meta name="description" content="AI Institutional Memory with citations, indexing management, and institutional notes for Planova campus clubs.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: '#4F46E5',
+            ai: '#0E7490',
+            'status-todo': '#94A3B8',
+            'status-doing': '#2563EB',
+            'status-blocked': '#DC2626',
+            'status-review': '#D97706',
+            'status-done': '#059669',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F1729;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      transition: box-shadow 150ms ease, border-color 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    }
+    .btn-black {
+      background-color: #000000;
+      color: #FFFFFF;
+      transition: background-color 150ms ease;
+    }
+    .btn-black:hover {
+      background-color: #1E293B;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    const INITIAL_SOURCES = [
+      { id: 'src-1', name: 'TechNova_2025_PostEvent_Report.pdf', category: 'Past Event', indexedDate: 'Sep 02, 2026', pages: 28, status: 'indexed' },
+      { id: 'src-2', name: 'University_Auditorium_Booking_Guidelines_2026.pdf', category: 'Campus Policy', indexedDate: 'Aug 28, 2026', pages: 14, status: 'indexed' },
+      { id: 'src-3', name: 'Student_Council_Sponsorship_Tier_Standard.pdf', category: 'Sponsorship', indexedDate: 'Aug 20, 2026', pages: 8, status: 'indexed' },
+      { id: 'src-4', name: 'Campus_EMT_Safety_Protocol_Handbook.pdf', category: 'Safety', indexedDate: 'Aug 15, 2026', pages: 22, status: 'indexed' },
+      { id: 'src-5', name: 'Hackathon_Network_VLAN_Allocation_Manual.pdf', category: 'Technical', indexedDate: 'Jul 30, 2026', pages: 6, status: 'indexed' },
+      { id: 'src-6', name: 'Institutional Note: Audio Vendor Contact Direct Line', category: 'Admin Note', indexedDate: 'Sep 12, 2026', pages: 1, status: 'indexed' }
+    ];
+
+    const INITIAL_UNANSWERED = [
+      { id: 'un-1', query: 'What is the overnight security guard fee for weekends?', count: 3, lastAsked: '2 hours ago', status: 'missing_data' },
+      { id: 'un-2', query: 'Does the campus power generator require external diesel refill permission?', count: 2, lastAsked: 'Yesterday', status: 'missing_data' }
+    ];
+
+    const INITIAL_CONVERSATION = [
+      {
+        id: 'msg-1',
+        role: 'user',
+        text: 'How did TechNova 2025 handle audio equipment power tripping issues?'
+      },
+      {
+        id: 'msg-2',
+        role: 'ai',
+        text: 'During TechNova 2025, the team experienced breaker overloads when stage spotlights and 4 subwoofers shared the North Aisle 15-amp circuit. The issue was resolved by routing dual 20-amp industrial extension cables from the Dean’s adjacent HVAC utility room and installing a dedicated line-interactive UPS.',
+        citations: [
+          { docId: 'src-1', docName: 'TechNova_2025_PostEvent_Report.pdf', page: 12, quote: 'Stage audio tripping occurred at 14:10 due to breaker overload on 15A outlet. Resolved by deploying twin 20A feeds from HVAC mechanical closet.' }
+        ]
+      },
+      {
+        id: 'msg-3',
+        role: 'user',
+        text: 'What is the required lead time to submit the Auditorium Permission letter?'
+      },
+      {
+        id: 'msg-4',
+        role: 'ai',
+        text: 'According to campus facility regulations, student organizations must submit the Auditorium Permission letter at least 14 business days prior to event commencement. Late filings incur a $150 expedited administrative review penalty and require written Dean counter-signature.',
+        citations: [
+          { docId: 'src-2', docName: 'University_Auditorium_Booking_Guidelines_2026.pdf', page: 3, quote: 'All major hall reservation requests require physical submission 14 business days in advance to allow facility safety sign-offs.' }
+        ]
+      }
+    ];
+
+    const NAV_ITEMS = [
+      { name: 'Dashboard', path: 'dashboard.html', icon: '📊', badge: 'Home' },
+      { name: 'Tasks', path: 'tasks.html', icon: '📋', badge: '68 Total' },
+      { name: 'Volunteers', path: 'volunteers.html', icon: '👥', badge: '22 Members' },
+      { name: 'Meetings', path: 'meetings.html', icon: '🎙️', badge: '9 Meetings' },
+      { name: 'Deadlines', path: 'deadlines.html', icon: '⏰', badge: '5 This Week' },
+      { name: 'Document Review', path: 'documents-review.html', icon: '📄', badge: '2 Pending' },
+      { name: 'Risks', path: 'risks.html', icon: '⚠️', badge: '1 Critical' },
+      { name: 'Announcements', path: 'announcements.html', icon: '📢', badge: '12 Sent' },
+      { name: 'Knowledge Base', path: 'knowledge.html', icon: '🧠', active: true, badge: '24 Docs' }
+    ];
+
+    const SAMPLE_QUERIES = [
+      'Auditorium booking process & lead times',
+      'TechNova 2025 sponsor deliverables report',
+      'Campus safety EMT protocols for late-night hackathons',
+      'Who is the primary audio vendor emergency contact?'
+    ];
+
+    function KnowledgeApp() {
+      const isAdmin = true;
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [loading, setLoading] = useState(true);
+
+      const [sources, setSources] = useState(INITIAL_SOURCES);
+      const [unanswered, setUnanswered] = useState(INITIAL_UNANSWERED);
+      const [messages, setMessages] = useState(INITIAL_CONVERSATION);
+      const [inputQuery, setInputQuery] = useState('');
+      const [isSearching, setIsSearching] = useState(false);
+
+      // Modals
+      const [citationModal, setCitationModal] = useState(false);
+      const [activeCitation, setActiveCitation] = useState(null);
+      const [newNoteModal, setNewNoteModal] = useState(false);
+      const [noteTitle, setNoteTitle] = useState('');
+      const [noteBody, setNoteBody] = useState('');
+      const [removeSourceModal, setRemoveSourceModal] = useState(false);
+      const [sourceToRemove, setSourceToRemove] = useState(null);
+
+      // Toast
+      const [toast, setToast] = useState(null);
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 400);
+        return () => clearTimeout(timer);
+      }, []);
+
+      const handleAsk = (queryText) => {
+        const q = queryText || inputQuery;
+        if (!q.trim()) return;
+
+        const userMsg = { id: `msg-${Date.now()}`, role: 'user', text: q.trim() };
+        setMessages(prev => [...prev, userMsg]);
+        setInputQuery('');
+        setIsSearching(true);
+
+        setTimeout(() => {
+          let aiText = '';
+          let cits = [];
+
+          if (q.toLowerCase().includes('audio') || q.toLowerCase().includes('vendor')) {
+            aiText = 'The registered campus sound vendor for TechNova is SoundWave Pro Systems. The primary contact is Rajesh Verma (Direct Mobile: +91 98201 44821). Note from past organizers: call his cell directly 2 hours before load-in as office email is rarely monitored on weekends.';
+            cits = [{
+              docId: 'src-6',
+              docName: 'Audio Vendor Contact Direct Line (Admin Note)',
+              page: 1,
+              quote: 'SoundWave Pro Systems primary lead Rajesh Verma +91 98201 44821. Keynote wireless lapels are stored in flightcase B.'
+            }];
+          } else if (q.toLowerCase().includes('budget') || q.toLowerCase().includes('sponsor')) {
+            aiText = 'TechNova 2025 closed with $14,200 in total sponsorship revenue across Title, Gold, and Silver tiers. Major expenditure categories were Catering (42%), Prizes & Hardware (28%), Swag & Branding (18%), and Facility Operations (12%).';
+            cits = [{
+              docId: 'src-1',
+              docName: 'TechNova_2025_PostEvent_Report.pdf',
+              page: 7,
+              quote: 'Financial reconciliation: $14,200 collected. Final surplus of $1,150 transferred to IEEE student branch treasury.'
+            }];
+          } else {
+            aiText = `Based on our indexed club documents, "${q}" is referenced in past event manuals. Operational protocols emphasize early coordinator sign-offs and adherence to campus facility safety bylaws.`;
+            cits = [{
+              docId: 'src-2',
+              docName: 'University_Auditorium_Booking_Guidelines_2026.pdf',
+              page: 5,
+              quote: 'Coordinators must review safety compliance and crowd flow capacity limits.'
+            }];
+          }
+
+          const aiMsg = {
+            id: `msg-${Date.now() + 1}`,
+            role: 'ai',
+            text: aiText,
+            citations: cits
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          setIsSearching(false);
+        }, 900);
+      };
+
+      const handleAddNote = (e) => {
+        e.preventDefault();
+        if (!noteTitle.trim() || !noteBody.trim()) return;
+        const newSrc = {
+          id: `src-${Date.now()}`,
+          name: `Institutional Note: ${noteTitle.trim()}`,
+          category: 'Admin Note',
+          indexedDate: 'Just now',
+          pages: 1,
+          status: 'indexed',
+          content: noteBody.trim()
+        };
+        setSources(prev => [newSrc, ...prev]);
+        showToast('Institutional knowledge note indexed into Planova AI memory.');
+        setNewNoteModal(false);
+        setNoteTitle('');
+        setNoteBody('');
+      };
+
+      const handleConfirmRemoveSource = () => {
+        if (!sourceToRemove) return;
+        setSources(prev => prev.filter(s => s.id !== sourceToRemove.id));
+        showToast(`Removed "${sourceToRemove.name}" from searchable index.`);
+        setRemoveSourceModal(false);
+        setSourceToRemove(null);
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {/* Top Bar */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                title="Open Navigation Menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span className="hidden md:inline text-xs font-bold text-slate-800">Modules</span>
+              </button>
+
+              <a href="dashboard.html" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1 flex-shrink-0">
+                  <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-black leading-none">PLANOVA</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                      Institutional AI
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">
+                    Knowledge Base
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="dashboard.html"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors border border-slate-200"
+              >
+                ← Dashboard
+              </a>
+
+              {/* Profile with President Role */}
+              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                <div className="relative flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    J
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-black leading-tight">Jenish</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase bg-black text-white shadow-xs">
+                    President
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <a href="dashboard.html" className="hover:text-black transition-colors">Dashboard</a>
+              <span>/</span>
+              <span className="text-black font-bold">Knowledge Base</span>
+            </nav>
+
+            {/* PAGE HEADER PATTERN: [Bold page title] [light-gray count/status pill] + subtitle */}
+            <div className="clean-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#0F1729] tracking-tight">
+                    Knowledge Base
+                  </h1>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                    24 documents indexed
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Ask questions across all past events' documents, guidelines, and notes with instant page-level citations.
+                </p>
+              </div>
+
+              {/* Admin Action: Add Knowledge Note */}
+              {isAdmin && (
+                <button
+                  onClick={() => setNewNoteModal(true)}
+                  className="btn-black flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl shadow-xs"
+                >
+                  <span>+ Add Institutional Note</span>
+                </button>
+              )}
+            </div>
+
+            {/* SKELETON */}
+            {loading ? (
+              <div className="clean-card p-6 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse"></div>
+                ))}
+              </div>
+            ) : (
+              /* MAIN SPLIT LAYOUT: Q&A Thread (Left) vs Indexed Sources Sidebar (Right) */
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Area: Chat Search + Conversation Thread */}
+                <div className="lg:col-span-8 space-y-5">
+                  {/* Search / Ask Bar (Chat Style) */}
+                  <div className="clean-card p-4 space-y-3 bg-white shadow-sm border-slate-300">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-cyan-50 text-[#0E7490] flex items-center justify-center font-bold flex-shrink-0">
+                        ✦
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Ask anything about past budgets, venue contacts, audio troubleshooting..."
+                        value={inputQuery}
+                        onChange={e => setInputQuery(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAsk(); }}
+                        className="flex-1 px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-black rounded-xl border border-slate-200"
+                      />
+                      <button
+                        onClick={() => handleAsk()}
+                        disabled={isSearching || !inputQuery.trim()}
+                        className="btn-black px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 disabled:opacity-50"
+                      >
+                        {isSearching ? 'Thinking...' : 'Ask AI'}
+                      </button>
+                    </div>
+
+                    {/* Sample Query Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Suggested:</span>
+                      {SAMPLE_QUERIES.map((q, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleAsk(q)}
+                          className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200 text-left"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Conversation Thread */}
+                  <div className="space-y-4">
+                    {messages.map(msg => {
+                      const isUser = msg.role === 'user';
+
+                      return (
+                        <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[88%] rounded-2xl p-4 text-xs leading-relaxed ${
+                              isUser
+                                ? 'bg-black text-white rounded-br-none'
+                                : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-xs space-y-3'
+                            }`}
+                          >
+                            {!isUser && (
+                              <div className="flex items-center gap-1.5 text-[#0E7490] text-[11px] font-black pb-1 border-b border-slate-100">
+                                <span>✦ PLANOVA KNOWLEDGE CITATION ENGINE</span>
+                              </div>
+                            )}
+
+                            <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                            {/* Inline Citations */}
+                            {!isUser && msg.citations && msg.citations.length > 0 && (
+                              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Verified Sources:</span>
+                                {msg.citations.map((c, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => {
+                                      setActiveCitation(c);
+                                      setCitationModal(true);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-[#0E7490] font-bold text-[11px] border border-cyan-200 transition-colors cursor-pointer"
+                                  >
+                                    <span>📄 {c.docName}</span>
+                                    <span className="text-[9px] bg-white px-1 rounded font-black border border-cyan-300">p.{c.page}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Area: Indexed Sources Sidebar (Admin Only View & Controls) */}
+                <div className="lg:col-span-4 space-y-5">
+                  {/* Indexed Sources Card */}
+                  <div className="clean-card p-5 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">Indexed Sources ({sources.length})</h3>
+                        <p className="text-[11px] text-slate-500">Active documents contributing to AI citations</p>
+                      </div>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Index Active"></span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                      {sources.map(src => (
+                        <div key={src.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 text-xs group">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-bold text-slate-900 leading-snug truncate" title={src.name}>
+                              {src.name}
+                            </p>
+                            {isAdmin && (
+                              <button
+                                onClick={() => {
+                                  setSourceToRemove(src);
+                                  setRemoveSourceModal(true);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 text-[10px] font-bold transition-opacity"
+                                title="Remove from Knowledge Base"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500">
+                            <span>{src.category} • {src.pages} {src.pages === 1 ? 'page' : 'pages'}</span>
+                            <span className="font-semibold text-emerald-600">✓ Indexed</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Admin Only: Unanswered Queries Radar */}
+                  {isAdmin && (
+                    <div className="clean-card p-5 space-y-3 border-amber-200 bg-amber-50/20">
+                      <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">⚠️</span>
+                          <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">Unanswered Queries</h4>
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                          {unanswered.length} missing
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-snug">
+                        Recent questions that yielded "not found" results. Signal to upload or write documentation.
+                      </p>
+
+                      <div className="space-y-2 pt-1">
+                        {unanswered.map(item => (
+                          <div key={item.id} className="p-2.5 rounded-lg bg-white border border-amber-200 text-xs space-y-1">
+                            <p className="font-semibold text-slate-900">"{item.query}"</p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                              <span>Asked {item.count} times</span>
+                              <button
+                                onClick={() => {
+                                  setNoteTitle(`Answer: ${item.query}`);
+                                  setNewNoteModal(true);
+                                }}
+                                className="font-bold text-black hover:underline"
+                              >
+                                + Add Note
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* CITATION MODAL: Document Viewer with Highlighted Passage */}
+          {citationModal && activeCitation && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-xl w-full p-6 space-y-4 shadow-2xl">
+                <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#0E7490] uppercase">Planova Verified Citation</span>
+                    <h3 className="text-base font-bold text-slate-900">{activeCitation.docName}</h3>
+                    <p className="text-xs text-slate-500">Page {activeCitation.page} • Digital Archival Index</p>
+                  </div>
+                  <button onClick={() => setCitationModal(false)} className="text-slate-400 hover:text-black font-bold text-lg">✕</button>
+                </div>
+
+                <div className="p-4 bg-amber-50/70 border-l-4 border-amber-400 rounded-r-xl text-xs text-slate-900 font-medium leading-relaxed italic">
+                  "{activeCitation.quote}"
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center justify-between">
+                  <span>Authenticity confirmed via SHA-256 hash match</span>
+                  <span className="font-bold text-emerald-600">✓ Immutable Record</span>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button onClick={() => setCitationModal(false)} className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                    Close Citation
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN MODAL 1: Add Institutional Note */}
+          {newNoteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-lg w-full p-6 space-y-4 shadow-2xl">
+                <h3 className="text-lg font-bold text-slate-900">+ Add Institutional Memory Note</h3>
+                <p className="text-xs text-slate-500">
+                  Record informal knowledge that doesn’t exist in a formal PDF (e.g. vendor phone numbers, key handoffs, building quirks).
+                </p>
+
+                <form onSubmit={handleAddNote} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Note Title / Subject:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Electrical Breaker Room 204 Lock Combination"
+                      value={noteTitle}
+                      onChange={e => setNoteTitle(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Content / Instructions:</label>
+                    <textarea
+                      rows="4"
+                      required
+                      placeholder="Write exact facts, contact info, or operational workaround instructions..."
+                      value={noteBody}
+                      onChange={e => setNoteBody(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-black text-slate-900"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setNewNoteModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black">
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                      Index Knowledge Note
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* DESTRUCTIVE CONFIRMATION MODAL: Remove Source from Index */}
+          {removeSourceModal && sourceToRemove && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl border-red-200">
+                <div className="flex items-center gap-2 text-red-600">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="text-lg font-bold">Remove Source from Index</h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Are you sure you want to remove <strong className="text-black">"{sourceToRemove.name}"</strong> from the searchable Knowledge Base? The original file will not be deleted, but AI will no longer use it to answer questions.
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button onClick={() => setRemoveSourceModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black">
+                    Cancel
+                  </button>
+                  <button onClick={handleConfirmRemoveSource} className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                    Confirm Removal
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Sidebar Drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => setSidebarOpen(false)}></div>
+              <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
+                <div className="w-screen max-w-xs sm:max-w-sm bg-white shadow-2xl border-r border-[#E2E8F0] flex flex-col justify-between">
+                  <div>
+                    <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1">
+                          <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-black leading-tight">PLANOVA</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation Menu</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-black hover:bg-slate-200 transition-colors">
+                        ✕
+                      </button>
+                    </div>
+
+                    <nav className="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
+                      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Main Overview
+                      </div>
+                      {NAV_ITEMS.slice(0, 1).map(item => (
+                        <a key={item.name} href={item.path} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-black hover:bg-slate-100 transition-all">
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+
+                      <div className="pt-4 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Admin Core Modules
+                      </div>
+                      {NAV_ITEMS.slice(1).map(item => (
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            item.active ? 'bg-black text-white shadow-xs' : 'text-slate-700 hover:text-black hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                            item.active ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+                    </nav>
+                  </div>
+
+                  <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
+                        J
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-black leading-tight">Jenish</p>
+                        <p className="text-[10px] font-extrabold text-slate-500 uppercase">{isAdmin ? 'President (Admin)' : 'Member'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce border border-slate-700">
+              <span className="text-emerald-400">✓</span>
+              <span>{toast}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<KnowledgeApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>

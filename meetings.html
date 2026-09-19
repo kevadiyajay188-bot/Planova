@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meetings — Planova Admin</title>
+  <meta name="description" content="Meeting oversight, AI extraction statuses, and action item tracking for Planova campus clubs.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: '#4F46E5',
+            ai: '#0E7490',
+            'status-todo': '#94A3B8',
+            'status-doing': '#2563EB',
+            'status-blocked': '#DC2626',
+            'status-review': '#D97706',
+            'status-done': '#059669',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F1729;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      transition: box-shadow 150ms ease, border-color 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    }
+    .btn-black {
+      background-color: #000000;
+      color: #FFFFFF;
+      transition: background-color 150ms ease;
+    }
+    .btn-black:hover {
+      background-color: #1E293B;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    const INITIAL_MEETINGS = [
+      {
+        id: 'mtg-101',
+        title: 'Core Sync #4 — Stage, Audio & Keynote Verification',
+        date: 'Sep 18, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Priya Patel', avatar: 'PP', role: 'Logistics' },
+          { name: 'Arjun Rao', avatar: 'AR', role: 'Tech' },
+          { name: 'Kavya Sen', avatar: 'KS', role: 'Tech' }
+        ],
+        status: 'reviewed', // 'transcribing' | 'extracting' | 'ready' | 'reviewed'
+        hasUnreviewedItems: false,
+        extractedCount: 9,
+        acceptedCount: 9,
+        summary: 'Finalized speaker itinerary and stage podium positioning. Identified bottleneck in sound system cabling; task assigned to Priya Patel.',
+        actionItems: [
+          { text: 'Reserve secondary audio amplifier backup from Student Council', owner: 'Priya Patel', status: 'Accepted' },
+          { text: 'Send VIP parking passes to Dr. Aris Keynote team', owner: 'Kavya Sen', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-102',
+        title: 'Sponsorship Review & Deliverables Confirmation',
+        date: 'Sep 16, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Dev Malik', avatar: 'DM', role: 'Sponsorship' },
+          { name: 'Neha Sharma', avatar: 'NS', role: 'Marketing' }
+        ],
+        status: 'ready',
+        hasUnreviewedItems: true,
+        extractedCount: 7,
+        acceptedCount: 5,
+        summary: 'Reviewed Title Sponsor ($5,000) clauses. Need clarification on whether booth banners require physical vinyl certification.',
+        actionItems: [
+          { text: 'Confirm banner eyelet specifications with print shop', owner: 'Neha Sharma', status: 'Pending Review' },
+          { text: 'Draft tax exemption invoice for Google Cloud sponsorship credit', owner: 'Dev Malik', status: 'Pending Review' }
+        ]
+      },
+      {
+        id: 'mtg-103',
+        title: 'Technical Infrastructure & Hackathon API Gateways',
+        date: 'Sep 14, 2026',
+        attendees: [
+          { name: 'Arjun Rao', avatar: 'AR', role: 'Tech' },
+          { name: 'Kavya Sen', avatar: 'KS', role: 'Tech' },
+          { name: 'Vikram Joshi', avatar: 'VJ', role: 'Volunteer' }
+        ],
+        status: 'ready',
+        hasUnreviewedItems: true,
+        extractedCount: 6,
+        acceptedCount: 4,
+        summary: 'Cloud compute quota requested for 350 hacker nodes. Discord bot webhooks configured for live mentor ticket triage.',
+        actionItems: [
+          { text: 'Stress-test submission rate-limiter with 10k mock requests', owner: 'Arjun Rao', status: 'Pending Review' }
+        ]
+      },
+      {
+        id: 'mtg-104',
+        title: 'Campus Security & Medical Protocols Briefing',
+        date: 'Sep 11, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Tanvi Gaikwad', avatar: 'TG', role: 'Logistics' },
+          { name: 'Rohan Jha', avatar: 'RJ', role: 'Operations' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 5,
+        acceptedCount: 5,
+        summary: 'Met with Dean of Student Affairs and Campus EMT officer. Verified 24/7 building access badge clearances.',
+        actionItems: [
+          { text: 'Mount emergency exit floorplan signage at registration lobby', owner: 'Tanvi Gaikwad', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-105',
+        title: 'Marketing Blast & Hacker Swag Pack Assembly',
+        date: 'Sep 08, 2026',
+        attendees: [
+          { name: 'Neha Sharma', avatar: 'NS', role: 'Marketing' },
+          { name: 'Sneha Kulkarni', avatar: 'SK', role: 'Volunteer' },
+          { name: 'Aman Varma', avatar: 'AV', role: 'Volunteer' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 4,
+        acceptedCount: 4,
+        summary: 'Instagram promo reached 4,200 student impressions. Finalized stickers, notebook covers, and lanyard card stock.',
+        actionItems: [
+          { text: 'Order 300 custom die-cut TechNova stickers', owner: 'Neha Sharma', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-106',
+        title: 'Volunteer Kickoff & Shift Schedule Walkthrough',
+        date: 'Sep 05, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Rohan Jha', avatar: 'RJ', role: 'Operations' },
+          { name: 'Aman Varma', avatar: 'AV', role: 'Volunteer' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 8,
+        acceptedCount: 8,
+        summary: 'Introduced 22 team volunteers to duty rosters, badge printing operations, and crisis escalation channels.',
+        actionItems: [
+          { text: 'Distribute volunteer WhatsApp emergency group invite', owner: 'Rohan Jha', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-107',
+        title: 'Food & Beverage Catering Vendor Finalization',
+        date: 'Aug 30, 2026',
+        attendees: [
+          { name: 'Tanvi Gaikwad', avatar: 'TG', role: 'Logistics' },
+          { name: 'Priya Patel', avatar: 'PP', role: 'Logistics' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 3,
+        acceptedCount: 3,
+        summary: 'Signed meal contract for dinner, midnight pizza snack, and breakfast bagels. Verified vegetarian/halal tagging.',
+        actionItems: [
+          { text: 'Submit dining hall advance deposit slip to Treasurer', owner: 'Tanvi Gaikwad', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-108',
+        title: 'Faculty Advisor Alignment & Dean Presentation',
+        date: 'Aug 22, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Dr. V. Raman', avatar: 'VR', role: 'Faculty Advisor' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 4,
+        acceptedCount: 4,
+        summary: 'Faculty Advisor approved official IEEE logo usage and academic attendance leave sanctions for participant hackathon teams.',
+        actionItems: [
+          { text: 'File attendance waiver letter with Registrar office', owner: 'Jenish', status: 'Accepted' }
+        ]
+      },
+      {
+        id: 'mtg-109',
+        title: 'Pre-Event Ideation & Hackathon Tracks Brainstorm',
+        date: 'Aug 10, 2026',
+        attendees: [
+          { name: 'Jenish', avatar: 'J', role: 'President' },
+          { name: 'Arjun Rao', avatar: 'AR', role: 'Tech' },
+          { name: 'Neha Sharma', avatar: 'NS', role: 'Marketing' }
+        ],
+        status: 'reviewed',
+        hasUnreviewedItems: false,
+        extractedCount: 6,
+        acceptedCount: 6,
+        summary: 'Approved four problem statement tracks: AI in Healthcare, Smart Campus Logistics, FinTech Security, and Open Innovation.',
+        actionItems: [
+          { text: 'Write track descriptions for portal publication', owner: 'Arjun Rao', status: 'Accepted' }
+        ]
+      }
+    ];
+
+    const NAV_ITEMS = [
+      { name: 'Dashboard', path: 'dashboard.html', icon: '📊', badge: 'Home' },
+      { name: 'Tasks', path: 'tasks.html', icon: '📋', badge: '68 Total' },
+      { name: 'Volunteers', path: 'volunteers.html', icon: '👥', badge: '22 Members' },
+      { name: 'Meetings', path: 'meetings.html', icon: '🎙️', active: true, badge: '9 Meetings' },
+      { name: 'Deadlines', path: 'deadlines.html', icon: '⏰', badge: '5 This Week' },
+      { name: 'Document Review', path: 'documents-review.html', icon: '📄', badge: '2 Pending' },
+      { name: 'Risks', path: 'risks.html', icon: '⚠️', badge: '1 Critical' },
+      { name: 'Announcements', path: 'announcements.html', icon: '📢', badge: '12 Sent' },
+      { name: 'Knowledge Base', path: 'knowledge.html', icon: '🧠', badge: '24 Docs' }
+    ];
+
+    const STATUS_CONFIG = {
+      transcribing: { label: 'Transcribing', bg: 'bg-slate-100 text-slate-700', border: 'border-slate-300' },
+      extracting: { label: 'Extracting AI', bg: 'bg-cyan-50 text-[#0E7490]', border: 'border-cyan-200' },
+      ready: { label: 'Action Items Ready', bg: 'bg-amber-50 text-amber-800', border: 'border-amber-200' },
+      reviewed: { label: 'Fully Reviewed', bg: 'bg-emerald-50 text-emerald-800', border: 'border-emerald-200' }
+    };
+
+    function MeetingsApp() {
+      const isAdmin = true;
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [loading, setLoading] = useState(true);
+
+      const [meetings, setMeetings] = useState(INITIAL_MEETINGS);
+      const [needsReviewFilter, setNeedsReviewFilter] = useState(false);
+
+      // Modals
+      const [newMeetingModal, setNewMeetingModal] = useState(false);
+      const [detailModal, setDetailModal] = useState(false);
+      const [activeMeeting, setActiveMeeting] = useState(null);
+      const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
+      const [meetingToDelete, setMeetingToDelete] = useState(null);
+      const [exportModal, setExportModal] = useState(false);
+
+      // New Meeting Form
+      const [newTitle, setNewTitle] = useState('');
+      const [newTranscript, setNewTranscript] = useState('');
+      const [isExtracting, setIsExtracting] = useState(false);
+
+      // Toast
+      const [toast, setToast] = useState(null);
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 400);
+        return () => clearTimeout(timer);
+      }, []);
+
+      const unreviewedMeetingsCount = useMemo(() => {
+        return meetings.filter(m => m.hasUnreviewedItems).length;
+      }, [meetings]);
+
+      const filteredMeetings = useMemo(() => {
+        if (needsReviewFilter) {
+          return meetings.filter(m => m.hasUnreviewedItems);
+        }
+        return meetings;
+      }, [meetings, needsReviewFilter]);
+
+      const handleCreateMeeting = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return;
+        setIsExtracting(true);
+
+        setTimeout(() => {
+          const created = {
+            id: `mtg-${Date.now()}`,
+            title: newTitle.trim(),
+            date: 'Today, Just now',
+            attendees: [
+              { name: 'Jenish', avatar: 'J', role: 'President' },
+              { name: 'Planova AI', avatar: '✦', role: 'Copilot' }
+            ],
+            status: 'ready',
+            hasUnreviewedItems: true,
+            extractedCount: 3,
+            acceptedCount: 0,
+            summary: newTranscript ? `AI Summary: ${newTranscript.slice(0, 140)}...` : 'Meeting notes recorded and action items extracted via AI transcript analysis.',
+            actionItems: [
+              { text: 'Draft follow-up action plan based on meeting recording', owner: 'Priya Patel', status: 'Pending Review' },
+              { text: 'Confirm schedule adjustments with executive board', owner: 'Jenish', status: 'Pending Review' }
+            ]
+          };
+          setMeetings(prev => [created, ...prev]);
+          setIsExtracting(false);
+          setNewMeetingModal(false);
+          setNewTitle('');
+          setNewTranscript('');
+          showToast('✦ Meeting logged & AI action items extracted!');
+        }, 1200);
+      };
+
+      const handleDeleteMeeting = () => {
+        if (!meetingToDelete) return;
+        setMeetings(prev => prev.filter(m => m.id !== meetingToDelete.id));
+        showToast(`Meeting "${meetingToDelete.title}" deleted.`);
+        setDeleteConfirmModal(false);
+        setMeetingToDelete(null);
+      };
+
+      const handleAcceptActionItem = (meetingId, itemIndex) => {
+        setMeetings(prev => prev.map(m => {
+          if (m.id === meetingId) {
+            const updatedItems = [...m.actionItems];
+            updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: 'Accepted' };
+            const allAccepted = updatedItems.every(i => i.status === 'Accepted');
+            return {
+              ...m,
+              actionItems: updatedItems,
+              acceptedCount: m.acceptedCount + 1,
+              hasUnreviewedItems: !allAccepted,
+              status: allAccepted ? 'reviewed' : 'ready'
+            };
+          }
+          return m;
+        }));
+        showToast('Action item approved and added to Tasks board!');
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {/* Top Bar */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                title="Open Navigation Menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span className="hidden md:inline text-xs font-bold text-slate-800">Modules</span>
+              </button>
+
+              <a href="dashboard.html" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1 flex-shrink-0">
+                  <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-black leading-none">PLANOVA</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                      TechNova 2026
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">
+                    Meetings Oversight
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="dashboard.html"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors border border-slate-200"
+              >
+                ← Dashboard
+              </a>
+
+              {/* Profile with President Role */}
+              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                <div className="relative flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    J
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Online"></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-black leading-tight">Jenish</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase bg-black text-white shadow-xs">
+                    President
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <a href="dashboard.html" className="hover:text-black transition-colors">Dashboard</a>
+              <span>/</span>
+              <span className="text-black font-bold">Meetings</span>
+            </nav>
+
+            {/* PAGE HEADER PATTERN: [Bold page title] [light-gray count/status pill] + subtitle */}
+            <div className="clean-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#0F1729] tracking-tight">
+                    Meetings
+                  </h1>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                    {meetings.length} meetings
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Notes, summaries, and extracted action items across all event syncs.
+                </p>
+              </div>
+
+              {/* Admin Actions: + New meeting & Export summaries */}
+              {isAdmin && (
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => setExportModal(true)}
+                    className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-300 transition-colors"
+                  >
+                    📄 Export All Summaries
+                  </button>
+
+                  <button
+                    onClick={() => setNewMeetingModal(true)}
+                    className="btn-black flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl shadow-xs"
+                  >
+                    <span>+ New Meeting</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* QUICK FILTERS */}
+            <div className="clean-card p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 text-xs">
+                {/* Needs Review Filter Chip (Admin Highlight) */}
+                <button
+                  onClick={() => setNeedsReviewFilter(!needsReviewFilter)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                    needsReviewFilter
+                      ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                      : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span>Needs review ({unreviewedMeetingsCount})</span>
+                </button>
+
+                <button
+                  onClick={() => setNeedsReviewFilter(false)}
+                  className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                    !needsReviewFilter
+                      ? 'bg-black text-white border-black'
+                      : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  All Meetings ({meetings.length})
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-400 font-medium">
+                Sorted by most recent
+              </div>
+            </div>
+
+            {/* SKELETON LOADER */}
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="clean-card p-5 h-28 animate-pulse bg-white space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="h-3 bg-slate-100 rounded w-2/3"></div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredMeetings.length === 0 ? (
+              /* EMPTY STATE */
+              <div className="clean-card p-12 text-center max-w-lg mx-auto my-8">
+                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+                  🎙️
+                </div>
+                <h3 className="text-base font-bold text-slate-900">No meetings match this view</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  All meeting action items have been approved and reconciled into the operational board.
+                </p>
+                <button
+                  onClick={() => setNeedsReviewFilter(false)}
+                  className="mt-4 px-4 py-2 bg-black text-white text-xs font-bold rounded-xl"
+                >
+                  Show All Meetings
+                </button>
+              </div>
+            ) : (
+              /* MEETING LIST */
+              <div className="space-y-3">
+                {filteredMeetings.map(mtg => {
+                  const cfg = STATUS_CONFIG[mtg.status] || STATUS_CONFIG.reviewed;
+
+                  return (
+                    <div
+                      key={mtg.id}
+                      className={`clean-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        mtg.hasUnreviewedItems ? 'border-amber-200/80 bg-amber-50/10' : ''
+                      }`}
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-base font-bold text-slate-900 leading-tight">
+                            {mtg.title}
+                          </h3>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border}`}>
+                            {cfg.label}
+                          </span>
+                          {mtg.hasUnreviewedItems && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                              Pending Review
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                          <span className="font-semibold text-slate-700">{mtg.date}</span>
+                          <span>•</span>
+
+                          {/* Attendee Avatars */}
+                          <div className="flex items-center -space-x-1.5">
+                            {mtg.attendees.map((att, idx) => (
+                              <div
+                                key={idx}
+                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-white ${
+                                  att.name === 'Planova AI' ? 'bg-[#0E7490] text-white' : 'bg-slate-800 text-white'
+                                }`}
+                                title={`${att.name} (${att.role})`}
+                              >
+                                {att.avatar}
+                              </div>
+                            ))}
+                          </div>
+
+                          <span>•</span>
+                          <span className="font-medium text-slate-700">
+                            {mtg.extractedCount} extracted, {mtg.acceptedCount} accepted
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 line-clamp-1 mt-1">
+                          {mtg.summary}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            setActiveMeeting(mtg);
+                            setDetailModal(true);
+                          }}
+                          className="btn-black px-3.5 py-1.5 text-xs font-bold rounded-xl"
+                        >
+                          Open Summary →
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setMeetingToDelete(mtg);
+                              setDeleteConfirmModal(true);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Meeting Record"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          {/* DETAIL MODAL: Meeting Summary & Action Items */}
+          {detailModal && activeMeeting && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400">{activeMeeting.date}</span>
+                    <h2 className="text-xl font-black text-slate-900 mt-0.5">{activeMeeting.title}</h2>
+                  </div>
+                  <button onClick={() => setDetailModal(false)} className="text-slate-400 hover:text-black font-bold text-lg">✕</button>
+                </div>
+
+                {/* AI Summary Card */}
+                <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/40 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[#0E7490] text-xs font-black">
+                    <span>✦ PLANOVA AI SYNTHESIS</span>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">{activeMeeting.summary}</p>
+                </div>
+
+                {/* Attendees */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Attendees</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {activeMeeting.attendees.map((att, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white ${att.name === 'Planova AI' ? 'bg-[#0E7490]' : 'bg-black'}`}>
+                          {att.avatar}
+                        </span>
+                        {att.name} ({att.role})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Extracted Action Items */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Extracted Action Items ({activeMeeting.actionItems.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {activeMeeting.actionItems.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900">{item.text}</p>
+                          <p className="text-[11px] text-slate-500">Owner: <strong className="text-slate-700">{item.owner}</strong></p>
+                        </div>
+                        <div>
+                          {item.status === 'Accepted' ? (
+                            <span className="text-emerald-700 font-bold px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[10px]">
+                              ✓ Accepted
+                            </span>
+                          ) : isAdmin ? (
+                            <button
+                              onClick={() => handleAcceptActionItem(activeMeeting.id, idx)}
+                              className="btn-black px-3 py-1 rounded-lg font-bold text-xs"
+                            >
+                              Accept to Tasks
+                            </button>
+                          ) : (
+                            <span className="text-amber-700 font-bold px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-[10px]">
+                              Pending Review
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-3 border-t border-slate-100">
+                  <button onClick={() => setDetailModal(false)} className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN MODAL: + New Meeting */}
+          {newMeetingModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-lg w-full p-6 space-y-4 shadow-2xl">
+                <h3 className="text-lg font-bold text-slate-900">+ Log New Meeting</h3>
+                <p className="text-xs text-slate-500">
+                  Paste transcript notes or bullet points. Planova AI will synthesize minutes and extract assigned tasks automatically.
+                </p>
+
+                <form onSubmit={handleCreateMeeting} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Meeting Title:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Core Sync #5 — Final AV & Badge Dry Run"
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-black text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Transcript / Discussion Notes:</label>
+                    <textarea
+                      rows="4"
+                      placeholder="Paste conversation transcript or bullet notes here..."
+                      value={newTranscript}
+                      onChange={e => setNewTranscript(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-black text-slate-900"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setNewMeetingModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black">
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isExtracting}
+                      className="btn-black px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2"
+                    >
+                      {isExtracting ? (
+                        <>
+                          <span className="animate-spin text-[#0E7490]">✦</span>
+                          <span>Extracting with AI...</span>
+                        </>
+                      ) : (
+                        <span>Save & Run AI Extraction</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* DESTRUCTIVE CONFIRMATION: Delete Meeting */}
+          {deleteConfirmModal && meetingToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-md w-full p-6 space-y-4 shadow-2xl border-red-200">
+                <div className="flex items-center gap-2 text-red-600">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="text-lg font-bold">Delete Meeting Record</h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Are you sure you want to delete <strong className="text-black">"{meetingToDelete.title}"</strong>? This will remove its transcript history from the event records.
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button onClick={() => setDeleteConfirmModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-black">
+                    Cancel
+                  </button>
+                  <button onClick={handleDeleteMeeting} className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                    Confirm Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* EXPORT ALL SUMMARIES MODAL */}
+          {exportModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+              <div className="clean-card max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Consolidated Meeting Minutes Report</h3>
+                    <p className="text-xs text-slate-500">Compiled for TechNova 2026 Executive Post-Event Report</p>
+                  </div>
+                  <button onClick={() => setExportModal(false)} className="text-slate-400 hover:text-black font-bold">✕</button>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 space-y-3 whitespace-pre-wrap select-all">
+                  {`# TechNova 2026 — Consolidated Meeting Minutes
+Event ID: evt-1 | IEEE Student Branch
+Generated: September 19, 2026
+
+` + meetings.map((m, i) => (
+`## ${i + 1}. ${m.title} (${m.date})
+Attendees: ${m.attendees.map(a => a.name).join(', ')}
+Status: ${m.status.toUpperCase()} (${m.acceptedCount}/${m.extractedCount} action items resolved)
+
+Summary:
+${m.summary}
+`)).join('\n---\n\n')}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(document.querySelector('.font-mono')?.textContent || '');
+                      showToast('Copied consolidated report to clipboard!');
+                    }}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 rounded-xl"
+                  >
+                    Copy Markdown
+                  </button>
+                  <button onClick={() => setExportModal(false)} className="btn-black px-4 py-2 text-xs font-bold rounded-xl">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Sidebar Drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => setSidebarOpen(false)}></div>
+              <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
+                <div className="w-screen max-w-xs sm:max-w-sm bg-white shadow-2xl border-r border-[#E2E8F0] flex flex-col justify-between">
+                  <div>
+                    <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center p-1">
+                          <img src="planova-logo.jpg" alt="Logo" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-black">P</span>'; }} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-black leading-tight">PLANOVA</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation Menu</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-black hover:bg-slate-200 transition-colors">
+                        ✕
+                      </button>
+                    </div>
+
+                    <nav className="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
+                      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Main Overview
+                      </div>
+                      {NAV_ITEMS.slice(0, 1).map(item => (
+                        <a key={item.name} href={item.path} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-black hover:bg-slate-100 transition-all">
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+
+                      <div className="pt-4 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Admin Core Modules
+                      </div>
+                      {NAV_ITEMS.slice(1).map(item => (
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            item.active ? 'bg-black text-white shadow-xs' : 'text-slate-700 hover:text-black hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="text-sm">{item.icon}</span>
+                            <span>{item.name}</span>
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                            item.active ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        </a>
+                      ))}
+                    </nav>
+                  </div>
+
+                  <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
+                        J
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-black leading-tight">Jenish</p>
+                        <p className="text-[10px] font-extrabold text-slate-500 uppercase">{isAdmin ? 'President (Admin)' : 'Member'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce border border-slate-700">
+              <span className="text-emerald-400">✓</span>
+              <span>{toast}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<MeetingsApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
