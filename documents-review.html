@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Review — Planova</title>
+  <meta name="description" content="Planova Document Review portal for club presidents and administrators. Track, review, approve, and reject club event documents.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            brand: '#000000',
+            ai: '#0E7490',
+            'status-todo': '#94A3B8',
+            'status-doing': '#2563EB',
+            'status-blocked': '#DC2626',
+            'status-review': '#D97706',
+            'status-done': '#059669',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const INITIAL_DATA = {
+      event: {
+        id: 'evt-1',
+        name: 'TechNova Hackathon 2026',
+        clubName: 'TechNova Student Club'
+      },
+      required: [
+        {
+          id: 'req-1',
+          docType: 'Auditorium Permission Letter',
+          vertical: 'Logistics',
+          dueDate: '2026-09-18',
+          isOverdue: true,
+          assignee: { id: 'usr-10', name: 'Rohan Jha', avatar: 'RJ', email: 'rohan.jha@campus.edu' }
+        },
+        {
+          id: 'req-2',
+          docType: 'Guest Keynote Speaker Agreement',
+          vertical: 'Technical',
+          dueDate: '2026-09-22',
+          isOverdue: false,
+          assignee: { id: 'usr-11', name: 'Kavya Sen', avatar: 'KS', email: 'kavya.sen@campus.edu' }
+        },
+        {
+          id: 'req-3',
+          docType: 'Campus Safety & EMT Medical Coverage',
+          vertical: 'Logistics',
+          dueDate: '2026-09-24',
+          isOverdue: false,
+          assignee: { id: 'usr-12', name: 'Tanvi Gaikwad', avatar: 'TG', email: 'tanvi.g@campus.edu' }
+        }
+      ],
+      submissions: [
+        {
+          id: 'sub-1',
+          docType: 'Sponsorship Pitch Deck & Tier Sheet',
+          fileName: 'TechNova_Sponsorship_Deck_Final.pdf',
+          fileUrl: '#',
+          mimeType: 'application/pdf',
+          fileSize: '4.2 MB',
+          submittedBy: { id: 'usr-1', name: 'Dev Malik', avatar: 'DM', role: 'Sponsorship Lead' },
+          vertical: 'Sponsorship',
+          submittedAt: 'Today, 10:14 AM',
+          submittedDate: '2026-09-19',
+          status: 'pending',
+          version: 1,
+          dueDate: '2026-09-20',
+          isOverdue: false,
+          previewText: 'Official sponsorship prospectus detailing Title ($5k), Gold ($2.5k), and Silver ($1k) tiers, plus venue banner placement clauses.',
+          history: [
+            { version: 1, submittedAt: 'Sep 19, 2026, 10:14 AM', submittedBy: 'Dev Malik', notes: 'Initial submission with updated tier deliverables.' }
+          ]
+        },
+        {
+          id: 'sub-2',
+          docType: 'Auditorium Seating & Stage Technical Layout',
+          fileName: 'Auditorium_Layout_Stage_Plan_v2.pdf',
+          fileUrl: '#',
+          mimeType: 'application/pdf',
+          fileSize: '2.8 MB',
+          submittedBy: { id: 'usr-2', name: 'Priya Patel', avatar: 'PP', role: 'Logistics Co-Lead' },
+          vertical: 'Logistics',
+          submittedAt: 'Yesterday, 4:30 PM',
+          submittedDate: '2026-09-18',
+          status: 'pending',
+          version: 2,
+          previousRejectionReason: 'The previous floorplan omitted designated emergency exit pathways and wheelchair accessibility ramps on the south aisle. Please add clear 6ft clearance markers.',
+          dueDate: '2026-09-18',
+          isOverdue: true,
+          previewText: 'Revised stage blueprint featuring designated emergency egress corridors marked in green, front wheelchair row, and sound engineer booth placement.',
+          history: [
+            { version: 2, submittedAt: 'Sep 18, 2026, 4:30 PM', submittedBy: 'Priya Patel', notes: 'Added emergency exit corridors and accessibility ramp markers as requested.' },
+            { version: 1, submittedAt: 'Sep 15, 2026, 2:10 PM', submittedBy: 'Priya Patel', notes: 'Initial floorplan draft.', rejectionReason: 'The previous floorplan omitted designated emergency exit pathways and wheelchair accessibility ramps on the south aisle. Please add clear 6ft clearance markers.' }
+          ]
+        },
+        {
+          id: 'sub-3',
+          docType: 'Official Hackathon Poster & Media Graphics',
+          fileName: 'TechNova_Branding_Kit_Final.png',
+          fileUrl: '#',
+          mimeType: 'image/png',
+          fileSize: '6.1 MB',
+          submittedBy: { id: 'usr-3', name: 'Neha Sharma', avatar: 'NS', role: 'Design Lead' },
+          vertical: 'Marketing',
+          submittedAt: 'Sep 17, 2026, 11:00 AM',
+          submittedDate: '2026-09-17',
+          status: 'approved',
+          version: 1,
+          dueDate: '2026-09-17',
+          isOverdue: false,
+          reviewedBy: 'Jenish (President)',
+          reviewedAt: 'Sep 17, 2026, 6:45 PM',
+          previewText: 'Approved vector assets, social media squares, and 300dpi print posters incorporating clean black and white branding.',
+          history: [
+            { version: 1, submittedAt: 'Sep 17, 2026, 11:00 AM', submittedBy: 'Neha Sharma', notes: 'Final artwork ready for print vendors and campus noticeboards.' }
+          ]
+        },
+        {
+          id: 'sub-4',
+          docType: 'Preliminary Catering & Food Vendor Invoice',
+          fileName: 'Campus_Dining_Catering_Quote.docx',
+          fileUrl: '#',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          fileSize: '840 KB',
+          submittedBy: { id: 'usr-4', name: 'Arjun Rao', avatar: 'AR', role: 'Operations Co-Lead' },
+          vertical: 'Finance',
+          submittedAt: 'Sep 16, 2026, 1:20 PM',
+          submittedDate: '2026-09-16',
+          status: 'rejected',
+          version: 1,
+          rejectionReason: 'Itemized breakfast tax rate is listed as 18% instead of the campus student non-profit exemption (0%). Please obtain a revised invoice from university catering.',
+          dueDate: '2026-09-16',
+          isOverdue: false,
+          reviewedBy: 'Jenish (President)',
+          reviewedAt: 'Sep 16, 2026, 3:12 PM',
+          previewText: 'Initial meal plan quote for 300 attendees across Saturday breakfast, lunch, and midnight snack packages.',
+          history: [
+            { version: 1, submittedAt: 'Sep 16, 2026, 1:20 PM', submittedBy: 'Arjun Rao', notes: 'First quote draft.', rejectionReason: 'Itemized breakfast tax rate is listed as 18% instead of the campus student non-profit exemption (0%). Please obtain a revised invoice from university catering.' }
+          ]
+        }
+      ]
+    };
+
+    function DocumentReviewApp() {
+      // Role switcher state (Admin/President vs Member/Read-Only)
+      const [currentUserRole, setCurrentUserRole] = useState('admin');
+      const isAdmin = currentUserRole === 'admin';
+
+      // Data state
+      const [data, setData] = useState(INITIAL_DATA);
+      const [activeEvent, setActiveEvent] = useState('TechNova Hackathon 2026');
+
+      // Filters and sorting
+      const [selectedVertical, setSelectedVertical] = useState('all');
+      const [selectedStatus, setSelectedStatus] = useState('all');
+      const [searchMember, setSearchMember] = useState('');
+      const [sortOrder, setSortOrder] = useState('newest');
+
+      // Drawer state
+      const [activeDoc, setActiveDoc] = useState(null);
+      const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+      const [showRejectForm, setShowRejectForm] = useState(false);
+      const [rejectReason, setRejectReason] = useState('');
+      const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+      // Toast feedback
+      const [toastMessage, setToastMessage] = useState(null);
+      const [remindedList, setRemindedList] = useState([]);
+
+      const showToast = (message) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(null), 4000);
+      };
+
+      // Metrics computation
+      const totalRequired = data.required.length + data.submissions.length;
+      const approvedCount = data.submissions.filter(s => s.status === 'approved').length;
+      const pendingCount = data.submissions.filter(s => s.status === 'pending').length;
+      const rejectedCount = data.submissions.filter(s => s.status === 'rejected').length;
+
+      // Filtered & Sorted submissions
+      const filteredSubmissions = useMemo(() => {
+        return data.submissions
+          .filter(sub => {
+            if (selectedStatus !== 'all' && sub.status !== selectedStatus) return false;
+            if (selectedVertical !== 'all' && sub.vertical.toLowerCase() !== selectedVertical.toLowerCase()) return false;
+            if (searchMember.trim()) {
+              const q = searchMember.toLowerCase();
+              const matchName = sub.submittedBy.name.toLowerCase().includes(q);
+              const matchDoc = sub.docType.toLowerCase().includes(q);
+              const matchFile = sub.fileName.toLowerCase().includes(q);
+              if (!matchName && !matchDoc && !matchFile) return false;
+            }
+            return true;
+          })
+          .sort((a, b) => {
+            if (sortOrder === 'newest') return b.id.localeCompare(a.id);
+            if (sortOrder === 'oldest') return a.id.localeCompare(b.id);
+            if (sortOrder === 'deadline') return new Date(a.dueDate) - new Date(b.dueDate);
+            return 0;
+          });
+      }, [data.submissions, selectedStatus, selectedVertical, searchMember, sortOrder]);
+
+      const handleOpenReview = (doc) => {
+        setActiveDoc(doc);
+        setShowRejectForm(false);
+        setRejectReason('');
+        setShowHistoryModal(false);
+        setIsDrawerOpen(true);
+      };
+
+      const handleCloseDrawer = () => {
+        setIsDrawerOpen(false);
+        setShowRejectForm(false);
+        setRejectReason('');
+        setActiveDoc(null);
+      };
+
+      const handleApprove = () => {
+        if (!activeDoc || !isAdmin) return;
+        const docId = activeDoc.id;
+        const submitterName = activeDoc.submittedBy.name;
+
+        setData(prev => ({
+          ...prev,
+          submissions: prev.submissions.map(sub => {
+            if (sub.id === docId) {
+              return {
+                ...sub,
+                status: 'approved',
+                reviewedBy: 'Jenish (President)',
+                reviewedAt: 'Just now'
+              };
+            }
+            return sub;
+          })
+        }));
+
+        handleCloseDrawer();
+        showToast(`Approved — ${submitterName} has been notified.`);
+      };
+
+      const handleReject = (e) => {
+        e.preventDefault();
+        if (!activeDoc || !isAdmin || rejectReason.trim().length < 10) return;
+        const docId = activeDoc.id;
+        const submitterName = activeDoc.submittedBy.name;
+        const reasonText = rejectReason.trim();
+
+        setData(prev => ({
+          ...prev,
+          submissions: prev.submissions.map(sub => {
+            if (sub.id === docId) {
+              return {
+                ...sub,
+                status: 'rejected',
+                rejectionReason: reasonText,
+                reviewedBy: 'Jenish (President)',
+                reviewedAt: 'Just now',
+                history: [
+                  {
+                    version: sub.version,
+                    submittedAt: sub.submittedAt,
+                    submittedBy: sub.submittedBy.name,
+                    rejectionReason: reasonText
+                  },
+                  ...sub.history
+                ]
+              };
+            }
+            return sub;
+          })
+        }));
+
+        handleCloseDrawer();
+        showToast(`Rejected — ${submitterName} has been notified with revision instructions.`);
+      };
+
+      const handleSendReminder = (reqItem) => {
+        if (!isAdmin) return;
+        setRemindedList(prev => [...prev, reqItem.id]);
+        showToast(`Reminder sent to ${reqItem.assignee.name} for "${reqItem.docType}".`);
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased pb-16">
+          {/* Toast Notification */}
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50">
+              <div className="bg-black text-white px-5 py-3.5 rounded-xl shadow-xl border border-slate-700 flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-xs sm:text-sm font-semibold">{toastMessage}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Top Header with BIG LOGO & BIG WEBSITE NAME */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-4">
+              <a href="dashboard.html" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center p-1.5 flex-shrink-0">
+                  <img
+                    src="planova-logo.jpg"
+                    alt="Planova Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<span class="font-black text-black text-xl">P</span>';
+                    }}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl sm:text-3xl font-black tracking-tight text-black leading-none">
+                      PLANOVA
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-black border border-slate-300">
+                      {data.event.clubName}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block mt-1">
+                    Document Review Portal
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            {/* Profile & Controls */}
+            <div className="flex items-center gap-3">
+              <a
+                href="dashboard.html"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-black bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Dashboard
+              </a>
+
+              {/* Role Toggle Switcher */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                <button
+                  onClick={() => setCurrentUserRole('admin')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    isAdmin
+                      ? 'bg-black text-white shadow-xs'
+                      : 'text-slate-600 hover:text-black'
+                  }`}
+                >
+                  President (Admin)
+                </button>
+                <button
+                  onClick={() => setCurrentUserRole('member')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    !isAdmin
+                      ? 'bg-black text-white shadow-xs'
+                      : 'text-slate-600 hover:text-black'
+                  }`}
+                >
+                  Member (Read-Only)
+                </button>
+              </div>
+
+              {/* Avatar Chip */}
+              <div className="flex items-center gap-2 pl-2">
+                <div className="w-8 h-8 rounded-full bg-black text-white font-bold text-xs flex items-center justify-center">
+                  J
+                </div>
+                <div className="hidden md:flex flex-col">
+                  <span className="text-xs font-bold text-black leading-tight">Jenish</span>
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase">
+                    {isAdmin ? 'President' : 'Member'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Container */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 space-y-6">
+            
+            {/* Read-Only Notice */}
+            {!isAdmin && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between text-xs text-amber-900">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">🔒</span>
+                  <div>
+                    <span className="font-bold">Read-Only Mode:</span> You are viewing the document portal as a Club Member. Approval, rejection, and reminder actions require President/Admin privileges.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCurrentUserRole('admin')}
+                  className="text-xs font-bold text-black underline hover:no-underline cursor-pointer"
+                >
+                  Switch to President
+                </button>
+              </div>
+            )}
+
+            {/* 1. HEADER SECTION */}
+            <section aria-label="Review Header" className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+                    <span>Events</span>
+                    <span>/</span>
+                    <span className="text-black font-bold">{activeEvent}</span>
+                    <span>/</span>
+                    <span className="text-slate-400">Documents Review</span>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">
+                    Document Review — {activeEvent}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Inspect submissions, enforce compliance, issue revisions, and verify operational prerequisites.
+                  </p>
+                </div>
+
+                {/* Event Selector */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="event-select" className="text-xs font-bold text-slate-600">Event:</label>
+                  <select
+                    id="event-select"
+                    value={activeEvent}
+                    onChange={(e) => setActiveEvent(e.target.value)}
+                    className="bg-slate-100 hover:bg-slate-200 text-xs font-bold text-black border border-slate-300 rounded-lg px-3 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black"
+                  >
+                    <option value="TechNova Hackathon 2026">TechNova Hackathon 2026</option>
+                    <option value="RoboQuest Championship">RoboQuest Championship</option>
+                    <option value="Alumni Mentorship Mixer">Alumni Mentorship Mixer</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 4 Clickable Stat Chips */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100">
+                {/* Chip 1: Total Required */}
+                <button
+                  onClick={() => setSelectedStatus('all')}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedStatus === 'all'
+                      ? 'bg-slate-900 text-white border-black shadow-sm'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+                  }`}
+                >
+                  <div className={`text-[11px] font-bold uppercase tracking-wider ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>
+                    Total Required
+                  </div>
+                  <div className="text-2xl font-black mt-1">
+                    {totalRequired}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${selectedStatus === 'all' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {data.required.length} pending submission
+                  </div>
+                </button>
+
+                {/* Chip 2: Approved */}
+                <button
+                  onClick={() => setSelectedStatus('approved')}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedStatus === 'approved'
+                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                      : 'bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-900 border-emerald-200'
+                  }`}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                    Approved
+                  </div>
+                  <div className="text-2xl font-black mt-1 text-emerald-700">
+                    {approvedCount}
+                  </div>
+                  <div className="text-[10px] text-emerald-700 mt-0.5">
+                    Verified & signed off
+                  </div>
+                </button>
+
+                {/* Chip 3: Pending Review */}
+                <button
+                  onClick={() => setSelectedStatus('pending')}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedStatus === 'pending'
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                      : 'bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 border-amber-200'
+                  }`}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                    Pending Review
+                  </div>
+                  <div className="text-2xl font-black mt-1 text-amber-700">
+                    {pendingCount}
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-0.5">
+                    Needs President sign-off
+                  </div>
+                </button>
+
+                {/* Chip 4: Rejected */}
+                <button
+                  onClick={() => setSelectedStatus('rejected')}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedStatus === 'rejected'
+                      ? 'bg-red-700 text-white border-red-800 shadow-sm'
+                      : 'bg-red-50/70 hover:bg-red-100/70 text-red-900 border-red-200'
+                  }`}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-red-700">
+                    Rejected
+                  </div>
+                  <div className="text-2xl font-black mt-1 text-red-700">
+                    {rejectedCount}
+                  </div>
+                  <div className="text-[10px] text-red-700 mt-0.5">
+                    Awaiting submitter fix
+                  </div>
+                </button>
+              </div>
+            </section>
+
+            {/* 2. "STILL WAITING ON" SECTION */}
+            <section aria-label="Pending Unsubmitted Documents" className="w-full">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-black tracking-tight flex items-center gap-2">
+                    <span>Still Waiting On</span>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  </h2>
+                  <span className="text-xs text-slate-500 font-medium">
+                    ({data.required.length} required documents have not been submitted yet)
+                  </span>
+                </div>
+                {isAdmin && data.required.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setRemindedList(data.required.map(r => r.id));
+                      showToast('Reminders dispatched to all unsubmitted assignees.');
+                    }}
+                    className="text-xs font-bold text-black hover:underline cursor-pointer"
+                  >
+                    Send Reminders to All
+                  </button>
+                )}
+              </div>
+
+              {/* Cards or Empty State */}
+              {data.required.length === 0 ? (
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-6 flex items-center justify-center gap-3 text-emerald-800 font-bold text-sm">
+                  <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">✓</span>
+                  <span>Everything has been submitted. Nice.</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {data.required.map((item) => {
+                    const isReminded = remindedList.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`bg-white rounded-xl p-4 border transition-all shadow-xs flex flex-col justify-between ${
+                          item.isOverdue
+                            ? 'border-red-300 ring-1 ring-red-200'
+                            : 'border-[#E2E8F0] hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                              {item.vertical}
+                            </span>
+                            {item.isOverdue && (
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200">
+                                Overdue
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-sm font-bold text-black leading-snug">
+                            {item.docType}
+                          </h3>
+
+                          <div className="flex items-center gap-2.5 mt-3 pt-3 border-t border-slate-100">
+                            <div className="w-7 h-7 rounded-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
+                              {item.assignee.avatar}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-semibold text-black truncate">
+                                {item.assignee.name}
+                              </div>
+                              <div className={`text-[11px] font-medium ${item.isOverdue ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                                Due: {item.dueDate}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
+                          <button
+                            onClick={() => handleSendReminder(item)}
+                            disabled={!isAdmin || isReminded}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                              isReminded
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                : isAdmin
+                                ? 'bg-black text-white hover:bg-zinc-800 shadow-xs cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {isReminded ? (
+                              <>
+                                <span>✓</span> Reminder Sent
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                Send Reminder
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* 3. FILTER & SEARCH BAR */}
+            <section aria-label="Table Filters" className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search Input */}
+                <div className="relative min-w-[220px] flex-1 sm:flex-initial">
+                  <input
+                    type="text"
+                    placeholder="Search submitter or doc..."
+                    value={searchMember}
+                    onChange={(e) => setSearchMember(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                  />
+                  <div className="pointer-events-none absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Vertical Filter */}
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="vertical-filter" className="text-xs font-semibold text-slate-500">Vertical:</label>
+                  <select
+                    id="vertical-filter"
+                    value={selectedVertical}
+                    onChange={(e) => setSelectedVertical(e.target.value)}
+                    className="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                  >
+                    <option value="all">All Verticals</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sponsorship">Sponsorship</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="status-filter" className="text-xs font-semibold text-slate-500">Status:</label>
+                  <select
+                    id="status-filter"
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                  >
+                    <option value="all">All Statuses ({data.submissions.length})</option>
+                    <option value="pending">Pending Review ({pendingCount})</option>
+                    <option value="approved">Approved ({approvedCount})</option>
+                    <option value="rejected">Rejected ({rejectedCount})</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Sort By */}
+              <div className="flex items-center gap-1.5 self-end md:self-auto">
+                <label htmlFor="sort-order" className="text-xs font-semibold text-slate-500">Sort by:</label>
+                <select
+                  id="sort-order"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="deadline">By Due Date</option>
+                </select>
+              </div>
+            </section>
+
+            {/* 4. DOCUMENT REVIEW TABLE */}
+            <section aria-label="Submissions Table" className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-5">Document</th>
+                      <th className="py-3.5 px-4">Submitted By</th>
+                      <th className="py-3.5 px-4">Vertical</th>
+                      <th className="py-3.5 px-4">Submitted On</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {filteredSubmissions.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          <div className="text-base font-semibold text-slate-600">No documents found</div>
+                          <div className="text-xs mt-1">Try adjusting your filters or search criteria.</div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSubmissions.map((sub) => {
+                        const isPending = sub.status === 'pending';
+                        const isApproved = sub.status === 'approved';
+                        const isRejected = sub.status === 'rejected';
+
+                        const isPdf = sub.mimeType.includes('pdf');
+                        const isImg = sub.mimeType.includes('image');
+
+                        return (
+                          <tr
+                            key={sub.id}
+                            className={`hover:bg-slate-50/80 transition-colors ${
+                              sub.isOverdue && isPending ? 'border-l-4 border-l-red-500' : ''
+                            }`}
+                          >
+                            {/* Column 1: Document */}
+                            <td className="py-3.5 px-5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-700">
+                                  {isPdf ? (
+                                    <span className="font-bold text-[10px] text-red-600">PDF</span>
+                                  ) : isImg ? (
+                                    <span className="font-bold text-[10px] text-blue-600">IMG</span>
+                                  ) : (
+                                    <span className="font-bold text-[10px] text-slate-600">DOC</span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-black text-xs leading-snug">
+                                    {sub.docType}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                                    {sub.fileName} ({sub.fileSize})
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 2: Submitted by */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-slate-800 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                                  {sub.submittedBy.avatar}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-black leading-tight">
+                                    {sub.submittedBy.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">
+                                    {sub.submittedBy.role}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 3: Vertical */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                {sub.vertical}
+                              </span>
+                            </td>
+
+                            {/* Column 4: Submitted on */}
+                            <td className="py-3.5 px-4 text-slate-600 font-medium">
+                              <div>{sub.submittedAt}</div>
+                              {sub.isOverdue && isPending && (
+                                <span className="text-[10px] font-bold text-red-600">
+                                  Due: {sub.dueDate}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Column 5: Status */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-1.5">
+                                {isPending && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    Pending review
+                                  </span>
+                                )}
+                                {isApproved && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Approved
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-50 text-red-800 border border-red-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                    Rejected
+                                  </span>
+                                )}
+                                {sub.version > 1 && (
+                                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-200 text-slate-800">
+                                    v{sub.version}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Column 6: Actions */}
+                            <td className="py-3.5 px-5 text-right">
+                              {isPending ? (
+                                <button
+                                  onClick={() => handleOpenReview(sub)}
+                                  className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-black text-white hover:bg-zinc-800 transition-all shadow-xs cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <span>Review</span>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleOpenReview(sub)}
+                                  className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-black transition-all border border-slate-200 cursor-pointer"
+                                >
+                                  View
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </main>
+
+          {/* 5. REVIEW DRAWER (Slide-over from right) */}
+          {isDrawerOpen && activeDoc && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              {/* Backdrop */}
+              <div
+                onClick={handleCloseDrawer}
+                className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+              />
+
+              <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                <div className="w-screen max-w-xl bg-white shadow-2xl border-l border-[#E2E8F0] flex flex-col justify-between">
+                  
+                  {/* Drawer Header */}
+                  <div className="p-6 border-b border-slate-100 flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                          {activeDoc.vertical}
+                        </span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                          Version {activeDoc.version}.0
+                        </span>
+                        {activeDoc.isOverdue && activeDoc.status === 'pending' && (
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">
+                            Overdue
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-bold text-black leading-snug">
+                        {activeDoc.docType}
+                      </h3>
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                        <span>Submitted by <b>{activeDoc.submittedBy.name}</b> ({activeDoc.submittedBy.role})</span>
+                        <span>•</span>
+                        <span>{activeDoc.submittedAt}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCloseDrawer}
+                      className="w-8 h-8 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100 flex items-center justify-center font-bold text-lg cursor-pointer"
+                      title="Close Drawer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Drawer Body */}
+                  <div className="p-6 overflow-y-auto flex-1 space-y-5">
+                    
+                    {/* Previous Rejection Reason Callout (if resubmission) */}
+                    {activeDoc.previousRejectionReason && (
+                      <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-900 mb-1">
+                          <span>⚠️</span>
+                          <span>Previous Rejection Reason (v1):</span>
+                        </div>
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                          "{activeDoc.previousRejectionReason}"
+                        </p>
+                        <div className="text-[10px] text-amber-700 font-semibold mt-2">
+                          Please check below if the submitter resolved these requested changes.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* If Currently Rejected */}
+                    {activeDoc.status === 'rejected' && activeDoc.rejectionReason && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                        <div className="text-xs font-bold text-red-900 mb-1">Rejection Feedback Given:</div>
+                        <p className="text-xs text-red-800 leading-relaxed font-medium">
+                          "{activeDoc.rejectionReason}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Document Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold block">File Name</span>
+                        <span className="font-semibold text-black truncate block mt-0.5">{activeDoc.fileName}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold block">File Size / Type</span>
+                        <span className="font-semibold text-black block mt-0.5">{activeDoc.fileSize} • {activeDoc.mimeType.split('/')[1]?.toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold block">Required Deadline</span>
+                        <span className={`font-semibold block mt-0.5 ${activeDoc.isOverdue ? 'text-red-600' : 'text-black'}`}>{activeDoc.dueDate}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold block">Status</span>
+                        <span className="font-bold text-black uppercase text-[11px] block mt-0.5">{activeDoc.status}</span>
+                      </div>
+                    </div>
+
+                    {/* Document Inline Preview Area */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-black">Document Preview</span>
+                        <button
+                          onClick={() => setShowHistoryModal(prev => !prev)}
+                          className="text-xs font-bold text-black hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>📜</span>
+                          <span>{showHistoryModal ? 'Hide History' : 'View History (All Versions)'}</span>
+                        </button>
+                      </div>
+
+                      {/* Version History Accordion */}
+                      {showHistoryModal && (
+                        <div className="mb-3 p-3.5 bg-slate-100 rounded-xl border border-slate-300 text-xs space-y-2">
+                          <div className="font-bold text-black text-[11px] uppercase tracking-wider mb-1">
+                            Revision History
+                          </div>
+                          {activeDoc.history?.map((h, i) => (
+                            <div key={i} className="p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
+                              <div className="flex items-center justify-between font-bold text-black">
+                                <span>Version {h.version}.0</span>
+                                <span className="text-slate-400 font-normal">{h.submittedAt}</span>
+                              </div>
+                              <div className="text-slate-600 mt-1">{h.notes}</div>
+                              {h.rejectionReason && (
+                                <div className="text-red-600 font-medium mt-1">
+                                  Rejection Note: {h.rejectionReason}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Inline Document Preview Box */}
+                      <div className="bg-slate-100 border border-slate-200 rounded-xl p-6 text-center">
+                        <div className="max-w-md mx-auto bg-white border border-slate-300 shadow-sm rounded-lg p-6 text-left">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                            <div className="font-bold text-xs text-black truncate">{activeDoc.fileName}</div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Page 1 of 3</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-3.5 bg-slate-200 rounded w-3/4"></div>
+                            <div className="h-2.5 bg-slate-100 rounded w-full"></div>
+                            <div className="h-2.5 bg-slate-100 rounded w-5/6"></div>
+                            <div className="h-2.5 bg-slate-100 rounded w-4/6"></div>
+                          </div>
+                          <div className="mt-4 p-3 bg-slate-50 border border-dashed border-slate-300 rounded text-xs text-slate-700 italic">
+                            "{activeDoc.previewText}"
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Digital Submission Hash: #8F3A29</span>
+                            <a
+                              href="#"
+                              onClick={(e) => { e.preventDefault(); showToast(`Downloaded ${activeDoc.fileName}`); }}
+                              className="font-bold text-black hover:underline inline-flex items-center gap-1"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              Download Raw File
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rejection Form */}
+                    {showRejectForm && (
+                      <form onSubmit={handleReject} className="p-4 bg-red-50/70 border border-red-300 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-red-900">
+                            What needs to be fixed? <span className="text-red-600">* (Required)</span>
+                          </label>
+                          <span className={`text-[10px] font-bold ${rejectReason.trim().length >= 10 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            {rejectReason.trim().length} / 10 characters minimum
+                          </span>
+                        </div>
+                        <textarea
+                          required
+                          rows={3}
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="Explain specifically what is missing or incorrect (e.g. Include emergency exit pathway dimensions on page 2)..."
+                          className="w-full px-3 py-2 text-xs bg-white border border-red-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowRejectForm(false)}
+                            className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={rejectReason.trim().length < 10}
+                            className={`px-4 py-1.5 text-xs font-bold text-white rounded-lg transition-all ${
+                              rejectReason.trim().length >= 10
+                                ? 'bg-red-600 hover:bg-red-700 shadow-sm cursor-pointer'
+                                : 'bg-red-300 cursor-not-allowed opacity-60'
+                            }`}
+                          >
+                            Confirm Rejection
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+
+                  {/* Drawer Footer Actions */}
+                  <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCloseDrawer}
+                      className="px-4 py-2 text-xs font-bold text-slate-700 hover:text-black bg-white border border-slate-200 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Close
+                    </button>
+
+                    {isAdmin && activeDoc.status === 'pending' ? (
+                      <div className="flex items-center gap-2">
+                        {!showRejectForm && (
+                          <button
+                            type="button"
+                            onClick={() => setShowRejectForm(true)}
+                            className="px-4 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer"
+                          >
+                            Reject Submission
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleApprove}
+                          className="px-5 py-2 text-xs font-bold text-white bg-black hover:bg-zinc-800 rounded-lg shadow-sm transition-all cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Approve Document
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500 font-medium">
+                        {activeDoc.status === 'approved' ? (
+                          <span className="text-emerald-700 font-bold">✓ Approved by President</span>
+                        ) : activeDoc.status === 'rejected' ? (
+                          <span className="text-red-700 font-bold">✕ Rejected (Awaiting Revision)</span>
+                        ) : (
+                          <span>Read-only preview</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<DocumentReviewApp />);
+  </script>
+</body>
+</html>

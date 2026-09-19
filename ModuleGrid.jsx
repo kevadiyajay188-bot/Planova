@@ -18,7 +18,7 @@ const DEFAULT_MODULES = {
   volunteers: { stat: '20 active, 2 overloaded', statusDot: '#DC2626', statusLabel: 'Overload Alert' },
   meetings: { stat: 'Last: Core Sync, 2 days ago', statusDot: '#059669', statusLabel: 'Minutes Logged' },
   deadlines: { stat: '5 due this week', statusDot: '#D97706', statusLabel: 'Urgent' },
-  documents: { stat: '12 files, 2 indexing', statusDot: '#000000', statusLabel: 'Synced' },
+  documents: { stat: '12 files, 2 pending review', statusDot: '#D97706', statusLabel: '2 Pending Review' },
   risks: { stat: '3 open (1 critical)', statusDot: '#B91C1C', statusLabel: 'Critical' },
   announcements: { stat: 'Last sent: Registration open', statusDot: '#059669', statusLabel: 'Delivered' },
   knowledgeBase: { stat: 'Ask a question about past events', statusDot: '#0E7490', statusLabel: 'AI Indexed' }
@@ -103,16 +103,16 @@ export default function ModuleGrid({ onSelectModule }) {
     },
     {
       id: 'documents',
-      title: 'Documents',
+      title: 'Document Review',
       stat: modData.documents?.stat,
-      statusDot: modData.documents?.statusDot,
-      statusLabel: modData.documents?.statusLabel,
+      statusDot: modData.documents?.statusDot || '#D97706',
+      statusLabel: modData.documents?.statusLabel || '2 Pending Review',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
-      iconBg: 'bg-slate-100 text-black'
+      iconBg: 'bg-amber-50 text-amber-800'
     },
     {
       id: 'risks',
@@ -189,7 +189,15 @@ export default function ModuleGrid({ onSelectModule }) {
         {MODULE_TILES.map(tile => (
           <button
             key={tile.id}
-            onClick={() => onSelectModule ? onSelectModule(tile.id) : alert(`Navigating to ${tile.title} module...`)}
+            onClick={() => {
+              if (onSelectModule) {
+                onSelectModule(tile.id);
+              } else if (tile.id === 'documents') {
+                if (typeof window !== 'undefined') window.location.href = 'documents-review.html';
+              } else {
+                alert(`Navigating to ${tile.title} module...`);
+              }
+            }}
             aria-label={`${tile.title} module, ${tile.stat}`}
             className="group text-left bg-white rounded-[14px] p-4 border border-[#E2E8F0] shadow-xs hover:shadow-md hover:border-[#CBD5E1] transition-all duration-200 flex flex-col justify-between h-32 focus:outline-none focus:ring-2 focus:ring-black"
           >
