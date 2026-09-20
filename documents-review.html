@@ -46,6 +46,16 @@
       background-color: #F8FAFC;
       color: #0F172A;
     }
+      @media (hover: none) and (pointer: coarse) {
+        .btn-black:hover, .ai-action-button:hover, button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: none; box-shadow: none; }
+      }
+  </style>
+  <style>
+    button[aria-label], button[title*="Menu"], button[title*="Close"], button[title*="Delete"], button[title*="Edit"], button[title*="Previous"], button[title*="Next"], button[title*="Notification"] { transition: transform 150ms ease-out; }
+    button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: scale(1.03); }
+    button[aria-label]:active, button[title*="Menu"]:active, button[title*="Close"]:active, button[title*="Delete"]:active, button[title*="Edit"]:active, button[title*="Previous"]:active, button[title*="Next"]:active, button[title*="Notification"]:active { transform: scale(1); }
+    @keyframes successActionPulse { 0% { transform: scale(1); box-shadow: none; } 45% { transform: scale(1.02); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18); } 100% { transform: scale(1); box-shadow: none; } }
+    .success-action { animation: successActionPulse 320ms ease-out; }
   </style>
 </head>
 <body>
@@ -1117,7 +1127,7 @@
                         <button
                           type="button"
                           onClick={handleApprove}
-                          className="px-5 py-2 text-xs font-bold text-white bg-black hover:bg-zinc-800 rounded-lg shadow-sm transition-all cursor-pointer inline-flex items-center gap-1.5"
+                          className={`px-5 py-2 text-xs font-bold text-white bg-black hover:bg-zinc-800 rounded-lg shadow-sm transition-all cursor-pointer inline-flex items-center gap-1.5 ${toastMessage ? 'success-action' : ''}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />

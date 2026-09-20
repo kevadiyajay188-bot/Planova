@@ -99,6 +99,20 @@
     .modal-backdrop { animation: fadeIn 0.15s ease; }
     @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     .modal-panel { animation: slideUp 0.2s cubic-bezier(0.16,1,0.3,1); }
+    .btn-primary { transition: all 150ms ease-out; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28); }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(79, 70, 229, 0.20); }
+    .ai-action-button { transition: transform 150ms ease-out, box-shadow 150ms ease-out; }
+    .ai-action-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14, 116, 144, 0.28); }
+    .ai-action-button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(14, 116, 144, 0.18); }
+    @keyframes loadingActionPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
+    .loading-action { animation: loadingActionPulse 900ms ease-in-out infinite; }
+    button[aria-label], button[title*="Menu"], button[title*="Close"], button[title*="Delete"], button[title*="Edit"], button[title*="Previous"], button[title*="Next"], button[title*="Notification"] { transition: transform 150ms ease-out; }
+    button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: scale(1.03); }
+    button[aria-label]:active, button[title*="Menu"]:active, button[title*="Close"]:active, button[title*="Delete"]:active, button[title*="Edit"]:active, button[title*="Previous"]:active, button[title*="Next"]:active, button[title*="Notification"]:active { transform: scale(1); }
+      @media (hover: none) and (pointer: coarse) {
+        .btn-primary:hover, .ai-action-button:hover, button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: none; box-shadow: none; }
+      }
   </style>
 </head>
 <body>
@@ -350,7 +364,7 @@
             <div className="flex items-center gap-3">
               <button
                 onClick={onOpenCopilot}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition-colors ai-action-button"
               >
                 <span>✦ Ask Planova AI</span>
               </button>
@@ -813,7 +827,7 @@
                   <button
                     type="submit"
                     disabled={!valid || loading}
-                    className="bg-black hover:bg-slate-800 text-white font-bold flex-1 py-2.5 text-sm rounded-xl transition-colors shadow-xs"
+                    className={`bg-black hover:bg-slate-800 text-white font-bold flex-1 py-2.5 text-sm rounded-xl transition-colors shadow-xs ${loading ? 'loading-action' : ''}`}
                   >
                     {loading ? <><IconSpinner/> Registering…</> : 'Confirm RSVP'}
                   </button>
@@ -1194,7 +1208,7 @@
           <div className="fixed bottom-6 right-6 z-40">
             <button
               onClick={() => setCopilotOpen(true)}
-              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-black hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xl border border-slate-800 cursor-pointer group"
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-black hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xl border border-slate-800 cursor-pointer group ai-action-button"
             >
               <span>✦ Ask Planova AI</span>
               <span className="flex h-2 w-2 relative">
@@ -1251,7 +1265,7 @@
                       className="flex-1 px-3.5 py-2.5 text-xs border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-slate-900"
                       disabled={copilotLoading}
                     />
-                    <button type="submit" className="px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-bold rounded-xl transition-colors shadow-xs text-xs" disabled={copilotLoading}>
+                    <button type="submit" className={`px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-bold rounded-xl transition-colors shadow-xs text-xs ${copilotLoading ? 'loading-action' : ''}`} disabled={copilotLoading}>
                       {copilotLoading ? '…' : 'Send'}
                     </button>
                   </form>

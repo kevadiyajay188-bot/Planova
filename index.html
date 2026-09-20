@@ -249,6 +249,17 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #F1F5F9; }
     ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    .glass-btn--primary { transition: all 150ms ease-out; }
+    .glass-btn--primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+    .glass-btn--primary:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.20); }
+    @keyframes loadingActionPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
+    .loading-action { animation: loadingActionPulse 900ms ease-in-out infinite; }
+    button[aria-label], button[title*="Menu"], button[title*="Close"], button[title*="Delete"], button[title*="Edit"], button[title*="Previous"], button[title*="Next"], button[title*="Notification"] { transition: transform 150ms ease-out; }
+    button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: scale(1.03); }
+    button[aria-label]:active, button[title*="Menu"]:active, button[title*="Close"]:active, button[title*="Delete"]:active, button[title*="Edit"]:active, button[title*="Previous"]:active, button[title*="Next"]:active, button[title*="Notification"]:active { transform: scale(1); }
+      @media (hover: none) and (pointer: coarse) {
+        .glass-btn--primary:hover, .ai-action-button:hover, button[aria-label]:hover, button[title*="Menu"]:hover, button[title*="Close"]:hover, button[title*="Delete"]:hover, button[title*="Edit"]:hover, button[title*="Previous"]:hover, button[title*="Next"]:hover, button[title*="Notification"]:hover { transform: none; box-shadow: none; }
+      }
   </style>
 </head>
 
@@ -512,7 +523,7 @@
                         type="button"
                         disabled={rsvpLoading[ev.id]}
                         onClick={() => handleRsvp(ev.id, ev.name)}
-                        className="glass-btn glass-btn--primary mt-auto"
+                        className={`glass-btn glass-btn--primary mt-auto ${rsvpLoading[ev.id] ? 'loading-action' : ''}`}
                         style={{background:'#000',color:'#fff',borderRadius:'10px',padding:'0.5rem 1rem',fontSize:'0.8125rem',fontWeight:700,border:'1px solid #1E293B',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem'}}
                       >
                         {rsvpLoading[ev.id] ? 'Sending…' : 'RSVP Now'}
@@ -743,7 +754,7 @@
                   <div className="pt-2">
                     <button type="submit" id="btn-signin-submit"
                       disabled={!isSignInValid || isLoading}
-                      className="glass-btn glass-btn--primary glass-btn--full glass-btn--lg">
+                      className={`glass-btn glass-btn--primary glass-btn--full glass-btn--lg ${isLoading ? 'loading-action' : ''}`}>
                       {isLoading ? <><Spinner/>Signing in…</> : 'Sign In'}
                     </button>
                   </div>
@@ -848,7 +859,7 @@
                   <div className="pt-2">
                     <button type="submit" id="btn-signup-submit"
                       disabled={!isSignUpValid || isLoading}
-                      className="glass-btn glass-btn--primary glass-btn--full glass-btn--lg">
+                      className={`glass-btn glass-btn--primary glass-btn--full glass-btn--lg ${isLoading ? 'loading-action' : ''}`}>
                       {isLoading ? <><Spinner/>Creating Account…</> : 'Create Account'}
                     </button>
                   </div>
