@@ -122,7 +122,7 @@ class AiOrchestrator {
     if (!allowedTools.includes(toolName)) {
       return {
         role: 'ai',
-        text: `Action Denied: Tool '${toolName}' is not accessible for role '${role}'.`,
+        text: `Action Denied: Tool '${toolName}' is not accessible for role '${role}'. User does not have permission to execute this operation.`,
         permissionDenied: true,
         toolAttempted: toolName
       };
@@ -314,7 +314,7 @@ class AiOrchestrator {
 
     return await this.executeToolDirectly({
       toolName: pending.toolName,
-      params: pending.params,
+      params: { ...pending.params, confirm: true },
       user: user || pending.user,
       query: pending.query
     });

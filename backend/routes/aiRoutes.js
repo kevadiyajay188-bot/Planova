@@ -20,15 +20,28 @@ async function handleAiRoutes(request, response, url, context) {
     return sendJson(response, 200, result);
   }
 
-  // 2. Generate Full Event Plan (Deliverable #1)
-  if (request.method === 'POST' && (pathname === '/api/ai/plan' || pathname === '/api/ai/generate-plan')) {
+  // 2. Generate Event Plan
+  if (request.method === 'POST' && pathname === '/api/ai/generate-plan') {
+    const body = await readJson(request);
+    const planResult = await orchestrator.eventPlanningService.generatePlan(body);
+    return sendJson(response, 200, planResult);
+  }
+
+  if (request.method === 'POST' && pathname === '/api/ai/plan') {
     const body = await readJson(request);
     const planResult = await orchestrator.eventPlanningService.generateFullPlan(body, orchestrator.aiModel);
     return sendJson(response, 200, planResult);
   }
 
-  // 3. Scan Risks with Rules + AI Explanation (Deliverable #6)
-  if (request.method === 'POST' && (pathname === '/api/ai/scan-risks' || pathname === '/api/ai/detect-risks')) {
+  // 3. Proactive Risk Detection & Historical Mitigations
+  if (request.method === 'POST' && pathname === '/api/ai/detect-risks') {
+    const body = await readJson(request);
+    const detectedResult = await orchestrator.riskService.detectRisksForEvent(body.eventId);
+    return sendJson(response, 200, detectedResult);
+  }
+
+  // 3b. Scan Risks with Rules + AI Explanation (Deliverable #6)
+  if (request.method === 'POST' && pathname === '/api/ai/scan-risks') {
     const body = await readJson(request);
     const detectedFacts = await orchestrator.riskService.scanRules(body.eventId);
     const explainedRisks = [];
@@ -74,15 +87,16 @@ async function handleAiRoutes(request, response, url, context) {
 
     if (!searchResult.found || !searchResult.sources || !searchResult.sources.length) {
       return sendJson(response, 200, {
-        answer: 'Information not found in uploaded club documents.',
+        answer: searchResult.answer || "I couldn't find enough information in the club's records.",
         citations: [],
+        sources: [],
         found: false
       });
     }
 
-    // Top chunks retrieved - send ONLY these chunks + question to Gemini
+    // Top chunks retrieved - send ONLY these chunks + question to Gemini if active
     let ragAnswer = null;
-    if (orchestrator.aiModel && typeof orchestrator.aiModel.callGemini === 'function') {
+    if (orchestrator.aiModel && typeof orchestrator.aiModel.callGemini === 'function' && orchestrator.aiModel.apiKey) {
       try {
         const chunksContext = searchResult.sources.map((s, idx) => `[Source ${idx + 1}] Title: ${s.title}, Section: ${s.section}\nExcerpt: "${s.excerpt}"`).join('\n\n');
         const prompt = `You are Planova's Document Intelligence assistant.
@@ -118,6 +132,7 @@ Output valid JSON:
               page: s.section || 'Page 1',
               quote: s.excerpt
             })),
+            sources: searchResult.sources,
             found: !parsed.answer.toLowerCase().includes('not found')
           };
         }
@@ -134,8 +149,11 @@ Output valid JSON:
           page: s.section || 'Page 1',
           quote: s.excerpt
         })),
+        sources: searchResult.sources,
         found: true
       };
+    } else {
+      ragAnswer.sources = searchResult.sources;
     }
 
     return sendJson(response, 200, ragAnswer);

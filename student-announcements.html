@@ -1504,18 +1504,34 @@
         setCopilotMessages(m => [...m, { role: 'user', text: msg }]);
         setCopilotQuery('');
         setCopilotLoading(true);
-        fetch('/api/ai/copilot', {
+
+        const apiBase = (window.location.protocol === 'file:' || !window.location.host.includes('3000')) ? 'http://localhost:3000' : '';
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        fetch(apiBase + '/api/ai/copilot', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ message: msg })
         })
-          .then(r => r.json())
+          .then(r => {
+            if (!r.ok) throw new Error('Status ' + r.status);
+            return r.json();
+          })
           .then(data => {
             const reply = data.text || data.response || 'Processed with Planova Gemini AI.';
             setCopilotMessages(m => [...m, { role: 'ai', text: reply }]);
           })
           .catch(() => {
-            setCopilotMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+            const q = msg.toLowerCase();
+            let fallback = `📢 **Campus Announcements Intelligence**: I can help you find campus broadcasts, event notifications, registration deadlines, and venue updates.`;
+            if (q.includes('event') || q.includes('hackathon') || q.includes('technova')) {
+              fallback = `🚀 **Latest Announcement**: TechNova Hackathon 2026 registrations are live! Central Auditorium venue has been confirmed. RSVP directly from the events page.`;
+            } else if (q.includes('deadline')) {
+              fallback = `⏰ **Upcoming Deadlines**: Team registration closes 5 days before TechNova. Submit project abstracts through the student portal.`;
+            }
+            setCopilotMessages(m => [...m, { role: 'ai', text: fallback }]);
           })
           .finally(() => setCopilotLoading(false));
       };

@@ -49,6 +49,15 @@ function createServer(overrides = {}) {
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+      if (request.method === 'OPTIONS') {
+        response.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Requested-With',
+          'Access-Control-Max-Age': '86400'
+        });
+        return response.end();
+      }
       if (url.pathname.startsWith('/api/')) return await handleApi(request, response, url, context);
       if (request.method !== 'GET' && request.method !== 'HEAD') return failure(response, 405, 'Method not allowed.');
       const filePath = safeFilePath(config.frontendDirectory, decodeURIComponent(url.pathname));
@@ -58,7 +67,14 @@ function createServer(overrides = {}) {
       const extension = path.extname(filePath).toLowerCase();
       const type = MIME_TYPES[extension] || 'application/octet-stream';
       if (extension === '.html') content = Buffer.from(runtimeHtml(content.toString('utf8'), path.basename(filePath)), 'utf8');
-      response.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin', 'Cache-Control': extension === '.html' ? 'no-store' : 'public, max-age=3600' });
+      response.writeHead(200, {
+        'Content-Type': type,
+        'Access-Control-Allow-Origin': '*',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'same-origin',
+        'Cache-Control': extension === '.html' ? 'no-store' : 'public, max-age=3600'
+      });
       if (request.method === 'HEAD') return response.end();
       response.end(content);
     } catch (error) {

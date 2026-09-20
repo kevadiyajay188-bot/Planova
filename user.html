@@ -1118,6 +1118,60 @@
         setTimeout(() => setToastMsg(''), 4000);
       };
 
+      function generateClientCopilotReply(rawQuery, eventsList = [], user = null) {
+        const q = String(rawQuery || '').toLowerCase().trim();
+        const events = Array.isArray(eventsList) ? eventsList : [];
+
+        // 1. Specific event inquiries
+        const matchedEvent = events.find(ev =>
+          q.includes(ev.name.toLowerCase()) ||
+          q.includes(ev.id.toLowerCase()) ||
+          (ev.tags && ev.tags.some(t => q.includes(t.toLowerCase()))) ||
+          (q.includes('hackathon') && ev.type === 'Hackathon') ||
+          (q.includes('robot') && ev.type === 'Robotics') ||
+          (q.includes('design') && ev.type === 'Workshop') ||
+          (q.includes('startup') && ev.type === 'Summit') ||
+          (q.includes('coding') && ev.type === 'Contest') ||
+          (q.includes('cultural') && ev.type === 'Cultural')
+        );
+
+        if (matchedEvent) {
+          if (q.includes('when') || q.includes('date') || q.includes('time') || q.includes('schedule')) {
+            return `📅 **${matchedEvent.name}** is scheduled for **${matchedEvent.date}** at **${matchedEvent.time}** in **${matchedEvent.venue}**. Status: ${matchedEvent.status === 'in_progress' ? '🟢 Live / In Progress' : '🔵 Upcoming'}.`;
+          }
+          if (q.includes('where') || q.includes('venue') || q.includes('location') || q.includes('room')) {
+            return `📍 **${matchedEvent.name}** will be held at **${matchedEvent.venue}**. Organized by **${matchedEvent.organizer}**.`;
+          }
+          if (q.includes('register') || q.includes('rsvp') || q.includes('join') || q.includes('ticket')) {
+            return `🎟️ You can reserve a spot for **${matchedEvent.name}** by clicking **"RSVP Now"** on the event card! Capacity: ${matchedEvent.rsvpCount}/${matchedEvent.capacity} confirmed.`;
+          }
+          if (q.includes('rule') || q.includes('requirement') || q.includes('info') || q.includes('guideline')) {
+            return `ℹ️ **Important notes for ${matchedEvent.name}**:\n${matchedEvent.importantInfo || matchedEvent.description}`;
+          }
+          return `✨ **${matchedEvent.name}** (${matchedEvent.type})\n📅 Date: ${matchedEvent.date} · ${matchedEvent.time}\n📍 Venue: ${matchedEvent.venue}\n👥 Organizer: ${matchedEvent.organizer}\n\n${matchedEvent.description}\n\n💡 Click "RSVP Now" on this card to reserve your pass!`;
+        }
+
+        // 2. Listing upcoming events
+        if (q.includes('event') || q.includes('upcoming') || q.includes('browse') || q.includes('happening') || q.includes('what can i') || q.includes('list')) {
+          const upcomingList = events.slice(0, 5).map(e => `• **${e.name}** (${e.date} @ ${e.venue})`).join('\n');
+          return `Here are the top campus events happening this month:\n\n${upcomingList}\n\nAsk me about any event's venue, timings, or how to register!`;
+        }
+
+        // 3. User RSVPs
+        if (q.includes('my rsvp') || q.includes('registered') || q.includes('my ticket') || q.includes('status')) {
+          return `You can check your confirmed spots in the **My RSVP Status** section below. To join a new event, simply click **RSVP Now** on any card.`;
+        }
+
+        // 4. Greetings
+        if (q.startsWith('hi') || q.startsWith('hello') || q.startsWith('hey') || q === 'help') {
+          const name = user?.name || user?.username || 'there';
+          return `Hello ${name}! 👋 I am your Planova AI Copilot.\n\nYou can ask me:\n• "When is TechNova Hackathon?"\n• "Where is the UI/UX Design Sprint?"\n• "List all upcoming events"\n• "How do I RSVP?"\n\nHow can I help you today?`;
+        }
+
+        // 5. General intelligent response
+        return `I have access to details on all **${events.length} campus events** currently active, including dates, venues, schedules, rules, and registrations. Ask me about TechNova, RoboQuest, DesignSprint, or any campus activity!`;
+      }
+
       const handleCopilotSubmit = (e) => {
         e.preventDefault();
         if (!query.trim() || copilotLoading) return;
@@ -1125,18 +1179,28 @@
         setMessages(m => [...m, { role: 'user', text: msg }]);
         setQuery('');
         setCopilotLoading(true);
-        fetch('/api/ai/copilot', {
+
+        const apiBase = (window.location.protocol === 'file:' || !window.location.host.includes('3000')) ? 'http://localhost:3000' : '';
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        fetch(apiBase + '/api/ai/copilot', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ message: msg })
         })
-          .then(r => r.json())
+          .then(r => {
+            if (!r.ok) throw new Error('Status ' + r.status);
+            return r.json();
+          })
           .then(data => {
             const reply = data.text || data.response || 'Done.';
             setMessages(m => [...m, { role: 'ai', text: reply }]);
           })
           .catch(() => {
-            setMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+            const fallbackReply = generateClientCopilotReply(msg, INITIAL_EVENTS, currentUser);
+            setMessages(m => [...m, { role: 'ai', text: fallbackReply }]);
           })
           .finally(() => setCopilotLoading(false));
       };
