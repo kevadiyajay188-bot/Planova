@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Event — Planova AI Planner</title>
+  <meta name="description" content="AI-assisted event planning and autonomous operational breakdown for Planova campus clubs.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: '#000000',
+            ai: '#0E7490',
+            aiLight: '#ECFEFF'
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F1729;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      transition: box-shadow 150ms ease, border-color 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    }
+    .ai-badge {
+      background: #ECFEFF;
+      color: #0E7490;
+      border: 1px solid #A5F3FC;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    function EventCreationPage() {
+      // Basic event form state
+      const [title, setTitle] = useState('Hackathon 2026');
+      const [type, setType] = useState('Hackathon');
+      const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 2);
+        return d.toISOString().split('T')[0];
+      });
+      const [endDate, setEndDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 21); // 3 weeks
+        return d.toISOString().split('T')[0];
+      });
+      const [venue, setVenue] = useState('Central Auditorium');
+      const [budget, setBudget] = useState(12000);
+      const [teamSize, setTeamSize] = useState(30);
+      const [verticals, setVerticals] = useState(['Logistics', 'Technical', 'Marketing', 'Sponsorship', 'Operations']);
+
+      // Generation & Preview state
+      const [generating, setGenerating] = useState(false);
+      const [generationTime, setGenerationTime] = useState(null);
+      const [generatedPlan, setGeneratedPlan] = useState(null);
+      const [tasks, setTasks] = useState([]);
+      const [savingTasks, setSavingTasks] = useState(false);
+      const [saveSuccess, setSaveSuccess] = useState(false);
+      const [errorMsg, setErrorMsg] = useState(null);
+
+      const allVerticalOptions = ['Logistics', 'Technical', 'Marketing', 'Sponsorship', 'Operations', 'Finance', 'Design'];
+
+      const toggleVertical = (v) => {
+        setVerticals(prev => prev.includes(v) ? (prev.length > 1 ? prev.filter(item => item !== v) : prev) : [...prev, v]);
+      };
+
+      const handleGeneratePlan = async () => {
+        setErrorMsg(null);
+        setGenerating(true);
+        setSaveSuccess(false);
+        const startTime = Date.now();
+
+        try {
+          const res = await fetch('/api/ai/plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title,
+              type,
+              startDate,
+              endDate,
+              dateRange: `${startDate} to ${endDate}`,
+              venue,
+              budget: Number(budget),
+              teamSize: Number(teamSize),
+              verticals,
+              todayDate: new Date().toISOString()
+            })
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || `Server returned ${res.status}`);
+          }
+
+          const data = await res.json();
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          setGenerationTime(elapsed);
+          setGeneratedPlan(data);
+          setTasks(data.tasks || []);
+        } catch (err) {
+          setErrorMsg(err.message || 'Failed to generate operational plan.');
+        } finally {
+          setGenerating(false);
+        }
+      };
+
+      const handleUpdateTask = (index, field, value) => {
+        setTasks(prev => {
+          const updated = [...prev];
+          updated[index] = { ...updated[index], [field]: value };
+          return updated;
+        });
+      };
+
+      const handleDeleteTask = (index) => {
+        setTasks(prev => prev.filter((_, i) => i !== index));
+      };
+
+      const handleAcceptAndSave = async () => {
+        if (!tasks.length) return;
+        setSavingTasks(true);
+        setErrorMsg(null);
+
+        try {
+          const payloadTasks = tasks.map(t => ({
+            title: t.title,
+            vertical: t.vertical,
+            category: t.vertical,
+            priority: t.priority,
+            dueDate: t.dueAt,
+            estimateHours: t.estimateHours,
+            source: 'ai_plan',
+            status: 'todo'
+          }));
+
+          const res = await fetch('/api/tasks/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tasks: payloadTasks })
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to bulk-insert tasks.');
+          }
+
+          setSaveSuccess(true);
+        } catch (err) {
+          setErrorMsg(err.message || 'Error saving tasks.');
+        } finally {
+          setSavingTasks(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 pb-20">
+          {/* Top Bar */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <a href="dashboard.html" className="flex items-center gap-2 text-slate-500 hover:text-black font-semibold text-sm transition-colors">
+                  <span>←</span> Back to Dashboard
+                </a>
+                <span className="text-slate-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-black tracking-tight text-black">Planova AI Planner</span>
+                  <span className="ai-badge text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span>✨</span> Powered by Gemini
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <a href="tasks.html" className="text-xs font-semibold text-slate-600 hover:text-black px-3 py-1.5 rounded-lg border border-slate-200 bg-white">
+                  Open Tasks Board 📋
+                </a>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Heading */}
+            <div className="mb-8">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900">Create New Campus Event</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Fill in basic event facts, then let Planova AI synthesize historical post-mortems and generate a 25-35 task operational roadmap.
+              </p>
+            </div>
+
+            {errorMsg && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-800 flex items-center justify-between">
+                <span>⚠️ {errorMsg}</span>
+                <button onClick={() => setErrorMsg(null)} className="text-red-500 hover:text-red-800 font-bold">✕</button>
+              </div>
+            )}
+
+            {/* Basic Event Form */}
+            <div className="clean-card p-6 sm:p-8 mb-8">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">1. Basic Event Specifications</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Core event parameters used as facts for Gemini prompt synthesis</p>
+                </div>
+                <span className="text-xs font-semibold text-slate-400">Step 1 of 2</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Event Title</label>
+                  <input
+                    id="event-title-input"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Hackathon 2026, RoboQuest Arena"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Event Type</label>
+                  <select
+                    id="event-type-select"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  >
+                    <option value="Hackathon">Hackathon</option>
+                    <option value="Competition">Competition</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Conference">Conference / Summit</option>
+                    <option value="Cultural">Cultural Gala</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Venue</label>
+                  <input
+                    id="event-venue-input"
+                    type="text"
+                    value={venue}
+                    onChange={(e) => setVenue(e.target.value)}
+                    placeholder="e.g. Central Auditorium"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Start Date</label>
+                  <input
+                    id="event-start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">End Date (Event Day)</label>
+                  <input
+                    id="event-end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Total Budget ($)</label>
+                  <input
+                    id="event-budget-input"
+                    type="number"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Team Size (Volunteers)</label>
+                  <input
+                    id="event-teamsize-input"
+                    type="number"
+                    value={teamSize}
+                    onChange={(e) => setTeamSize(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Club Verticals Included</label>
+                  <div className="flex flex-wrap gap-2">
+                    {allVerticalOptions.map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => toggleVertical(v)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                          verticals.includes(v)
+                            ? 'bg-black text-white border-black shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {verticals.includes(v) ? '✓ ' : '+ '}{v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-xs text-slate-500">
+                  <span>⚡ AI will clamp every deadline between today ({new Date().toISOString().split('T')[0]}) and {endDate}.</span>
+                </div>
+                <button
+                  id="generate-full-plan-btn"
+                  type="button"
+                  disabled={generating || !title.trim()}
+                  onClick={handleGeneratePlan}
+                  className="w-full sm:w-auto px-6 py-3 bg-black hover:bg-slate-800 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Synthesizing Operational Plan (~10s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span>
+                      <span>Generate Full Plan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Generated Plan Preview */}
+            {generatedPlan && (
+              <div className="clean-card p-6 sm:p-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-black text-slate-900">2. Generated Operational Roadmap</h2>
+                      <span className="ai-badge text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <span>✨</span> AI Plan Ready
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {tasks.length} tasks synthesized in {generationTime || '7.8'}s • Clamped strictly within event horizon
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    {saveSuccess ? (
+                      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-4 py-2.5 rounded-xl">
+                        <span>✓ Tasks Saved!</span>
+                        <a href="tasks.html" className="underline hover:text-emerald-950 ml-2">Open Tasks Board →</a>
+                      </div>
+                    ) : (
+                      <button
+                        id="accept-plan-btn"
+                        type="button"
+                        disabled={savingTasks || !tasks.length}
+                        onClick={handleAcceptAndSave}
+                        className="w-full md:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {savingTasks ? 'Bulk-Inserting Tasks...' : `Accept & Bulk-Insert ${tasks.length} Tasks`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Milestones and Budget summary cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Key Milestones ({(generatedPlan.milestones || []).length})</h3>
+                    <div className="space-y-1.5">
+                      {(generatedPlan.milestones || []).map((m, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-slate-200/60 last:border-0">
+                          <span className="font-semibold text-slate-800">{m.title}</span>
+                          <span className="text-slate-500 font-mono">{m.dueAt.split('T')[0]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Budget Allocations (${budget.toLocaleString()})</h3>
+                    <div className="space-y-1.5">
+                      {(generatedPlan.budgetLines || []).map((b, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-slate-200/60 last:border-0">
+                          <span className="font-semibold text-slate-800">{b.category}</span>
+                          <span className="font-mono font-bold text-slate-900">${(b.allocated || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tasks Table */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                  <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Operational Tasks Breakdown ({tasks.length} tasks)
+                    </span>
+                    <span className="text-[11px] text-slate-500">Edit inline before accepting</span>
+                  </div>
+
+                  <div className="overflow-x-auto max-h-[500px]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10">
+                        <tr>
+                          <th className="py-2.5 px-4 w-12">#</th>
+                          <th className="py-2.5 px-4 min-w-[280px]">Task Title</th>
+                          <th className="py-2.5 px-4 w-36">Vertical</th>
+                          <th className="py-2.5 px-4 w-28">Priority</th>
+                          <th className="py-2.5 px-4 w-36">Deadline</th>
+                          <th className="py-2.5 px-4 w-24">Est. Hours</th>
+                          <th className="py-2.5 px-4 w-16 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {tasks.map((task, idx) => (
+                          <tr key={task.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-2.5 px-4 font-mono text-slate-400">{idx + 1}</td>
+                            <td className="py-2.5 px-4">
+                              <input
+                                type="text"
+                                value={task.title}
+                                onChange={(e) => handleUpdateTask(idx, 'title', e.target.value)}
+                                className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-black focus:outline-none font-medium text-slate-900 py-1"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-700">
+                                {task.vertical}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <select
+                                value={task.priority}
+                                onChange={(e) => handleUpdateTask(idx, 'priority', e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 font-bold text-[11px]"
+                              >
+                                <option value="P1">P1 (Critical)</option>
+                                <option value="P2">P2 (High)</option>
+                                <option value="P3">P3 (Normal)</option>
+                              </select>
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <input
+                                type="date"
+                                value={task.dueAt ? task.dueAt.split('T')[0] : ''}
+                                onChange={(e) => handleUpdateTask(idx, 'dueAt', new Date(e.target.value).toISOString())}
+                                className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 font-mono text-[11px]"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <input
+                                type="number"
+                                value={task.estimateHours || 3}
+                                onChange={(e) => handleUpdateTask(idx, 'estimateHours', Number(e.target.value))}
+                                className="w-16 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 font-mono text-[11px]"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTask(idx)}
+                                className="text-slate-400 hover:text-red-600 transition-colors font-bold text-sm"
+                                title="Remove task"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Bottom Acceptance Bar */}
+                <div className="mt-6 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">
+                    On accept, tasks are inserted with badge <span className="ai-badge font-bold px-1.5 py-0.5 rounded text-[10px]">✨ AI</span> into the board.
+                  </span>
+                  {!saveSuccess && (
+                    <button
+                      type="button"
+                      disabled={savingTasks || !tasks.length}
+                      onClick={handleAcceptAndSave}
+                      className="px-6 py-2.5 bg-black hover:bg-slate-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer"
+                    >
+                      {savingTasks ? 'Saving Tasks...' : 'Accept All & Save to Tasks'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<EventCreationPage />);
+  </script>
+</body>
+</html>

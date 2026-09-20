@@ -26,9 +26,13 @@ function safeFilePath(frontendDirectory, pathname) {
   if (requested === 'announcements' || requested === 'announcements/') {
     requested = 'student-announcements.html';
   }
+  if (requested === 'events/new' || requested === 'events/new/') {
+    requested = 'events-new.html';
+  }
   const resolved = path.resolve(frontendDirectory, requested);
   return resolved.startsWith(`${path.resolve(frontendDirectory)}${path.sep}`) || resolved === path.resolve(frontendDirectory) ? resolved : null;
 }
+
 
 function createServer(overrides = {}) {
   const config = getConfig(overrides);

@@ -5,7 +5,7 @@ class AiModelService {
   constructor(config = {}) {
     this.config = config;
     this.provider = config.provider || PROVIDERS.LOCAL;
-    this.model = config.model || 'gemini-1.5-pro';
+    this.model = config.model || 'gemini-3.6-flash';
     this.apiKey = config.apiKey || '';
     this.localEngine = new LocalIntelligenceEngine();
   }
@@ -18,7 +18,7 @@ class AiModelService {
     if (this.apiKey && this.provider !== PROVIDERS.LOCAL) {
       try {
         if (this.provider === PROVIDERS.GEMINI) {
-          return await this.callGemini({ prompt, systemPrompt });
+          return await this.callGemini({ prompt, systemPrompt, tools, context });
         }
         if (this.provider === PROVIDERS.OPENAI) {
           return await this.callOpenAi({ prompt, systemPrompt });
@@ -36,25 +36,49 @@ class AiModelService {
 
   generateWithLocalEngine({ prompt, context = {} }) {
     const intent = this.localEngine.classifyIntent(prompt, context);
+    if (intent.directText || !intent.toolName) {
+      return {
+        text: intent.directText || "I'm analyzing your request against our records.",
+        toolCall: null,
+        confidence: 0.98,
+        provider: 'local-engine',
+        model: 'planova-intelligence-v1'
+      };
+    }
     return {
-      text: `Understood your request regarding: "${prompt}". Selected tool [${intent.toolName}] to process this with context-backed intelligence.`,
+      text: `Understood your request regarding: "${prompt}". Executing action [${intent.toolName}] with context-backed intelligence.`,
       toolCall: {
         name: intent.toolName,
         parameters: intent.params
       },
-      confidence: 0.92,
+      confidence: 0.95,
       provider: 'local-engine',
       model: 'planova-intelligence-v1'
     };
   }
 
-  async callGemini({ prompt, systemPrompt }) {
+  async callGemini({ prompt, systemPrompt = '', tools = [], context = {} }) {
     const headers = {
       'Content-Type': 'application/json',
       'x-goog-api-key': this.apiKey
     };
-    if (this.apiKey.startsWith('AQ.') || this.apiKey.startsWith('ya29.')) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+
+    let enrichedSystemPrompt = systemPrompt;
+    if (tools && tools.length > 0) {
+      const toolSummaries = tools.map(t => `- ${t.name}: ${t.description} (Parameters: ${Object.keys(t.parameters || {}).join(', ') || 'none'})`).join('\n');
+      enrichedSystemPrompt += `\n\nOPERATIONAL TOOL REGISTRY:
+${toolSummaries}
+
+TOOL CALLING FORMAT:
+If the user's request is best fulfilled by executing one of the available tools above, respond with valid JSON:
+{
+  "toolCall": {
+    "name": "exact_tool_name",
+    "parameters": { ... }
+  },
+  "text": "Brief confirmation"
+}
+If no tool execution is needed, or if the request is out-of-scope for the user's role, respond with conversational markdown text.`;
     }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
@@ -63,7 +87,7 @@ class AiModelService {
       headers,
       body: JSON.stringify({
         contents: [
-          ...(systemPrompt ? [{ role: 'user', parts: [{ text: `System Instruction: ${systemPrompt}` }] }] : []),
+          ...(enrichedSystemPrompt ? [{ role: 'user', parts: [{ text: `System Instruction: ${enrichedSystemPrompt}` }] }] : []),
           { role: 'user', parts: [{ text: prompt }] }
         ],
         generationConfig: {
@@ -78,9 +102,27 @@ class AiModelService {
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Check if Gemini generated a toolCall in JSON format
+    let toolCall = null;
+    let cleanText = rawText;
+    try {
+      const jsonCandidate = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      if (jsonCandidate.startsWith('{') && jsonCandidate.endsWith('}')) {
+        const parsed = JSON.parse(jsonCandidate);
+        if (parsed && parsed.toolCall && parsed.toolCall.name) {
+          toolCall = parsed.toolCall;
+          cleanText = parsed.text || `Executing ${toolCall.name}`;
+        }
+      }
+    } catch {
+      // Direct text response
+    }
+
     return {
-      text,
+      text: cleanText,
+      toolCall,
       raw: data,
       provider: 'gemini',
       model: this.model

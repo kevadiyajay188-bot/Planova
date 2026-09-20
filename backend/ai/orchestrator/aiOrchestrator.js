@@ -50,6 +50,7 @@ class AiOrchestrator {
       budgetService: this.budgetService,
       eventPlanningService: this.eventPlanningService
     });
+    this.tools = this.toolRegistry;
 
     // In-memory pending confirmations map
     this.pendingConfirmations = new Map();
@@ -64,25 +65,47 @@ class AiOrchestrator {
       return { response: 'How can I assist you with your club event operations today?' };
     }
 
-    const availableTools = this.toolRegistry.getAllDefinitions();
+    const { normalizeCopilotRole, getToolsForRole, getContextForRole } = require('../utils/roleUtils');
+    const role = normalizeCopilotRole(user);
+    const eventId = context.eventId || context.currentEventId || 'evt-technova';
+
+    // 1. Build Isolated Context per Role (Back-end enforced data security)
+    const roleContext = await getContextForRole(role, user, eventId, this.store);
+    const combinedContext = {
+      ...roleContext,
+      role,
+      user: {
+        id: user ? user.id : 'unknown',
+        name: user ? user.name : (role === 'admin' ? 'President' : (role === 'volunteer' ? 'Volunteer' : 'Student')),
+        role
+      },
+      clubName: context.clubName || 'IEEE Student Branch',
+      eventName: context.eventName || 'TechNova Hackathon 2026',
+      currentEventId: eventId
+    };
+
+    // 2. Build Tools Whitelist strictly per Role
+    const availableTools = this.toolRegistry.getAllDefinitions(role);
     const systemPrompt = buildCopilotSystemPrompt({
-      user,
-      club: context.clubName || 'IEEE Student Branch',
-      currentEvent: context.eventName || 'TechNova Hackathon 2026',
-      tools: availableTools
+      user: combinedContext.user,
+      club: combinedContext.clubName,
+      currentEvent: combinedContext.eventName,
+      tools: availableTools,
+      context: combinedContext
     });
 
-    // 1. Model / Intent Classification
+    // 3. Model / Intent Classification with Role-Isolated Context
     const modelOutput = await this.modelService.generateCompletion({
       prompt: rawQuery,
       systemPrompt,
       tools: availableTools,
-      context
+      context: combinedContext,
+      user: combinedContext.user
     });
 
     const toolCall = modelOutput.toolCall;
 
-    // If no tool selected, provide direct model response
+    // If no tool selected or direct text refusal, provide direct response
     if (!toolCall || !toolCall.name) {
       return {
         role: 'ai',
@@ -94,18 +117,18 @@ class AiOrchestrator {
     const toolName = toolCall.name;
     const toolParams = toolCall.parameters || {};
 
-    // 2. Strict Permission Validation
-    const permissionCheck = this.permissionService.canExecuteTool(user, toolName);
-    if (!permissionCheck.allowed) {
+    // 4. Strict Role & Tool Whitelist Gate
+    const allowedTools = getToolsForRole(role);
+    if (!allowedTools.includes(toolName)) {
       return {
         role: 'ai',
-        text: `Action Denied: ${permissionCheck.reason}`,
+        text: `Action Denied: Tool '${toolName}' is not accessible for role '${role}'.`,
         permissionDenied: true,
         toolAttempted: toolName
       };
     }
 
-    // 3. Autonomy & Confirmation Check
+    // 5. Autonomy & Confirmation Check
     const needsConfirmation = this.permissionService.requiresConfirmation(toolName, context.autonomyOverride);
 
     if (needsConfirmation) {
@@ -115,7 +138,7 @@ class AiOrchestrator {
         toolName,
         params: toolParams,
         user,
-        context,
+        context: combinedContext,
         query: rawQuery,
         createdAt: new Date().toISOString()
       });
@@ -131,7 +154,7 @@ class AiOrchestrator {
       };
     }
 
-    // 4. Safe / Auto Tool Execution
+    // 6. Safe / Auto Tool Execution
     return await this.executeToolDirectly({
       toolName,
       params: toolParams,
@@ -226,6 +249,47 @@ class AiOrchestrator {
 
     if (toolName === 'create_meeting_action') {
       return `Action item created from meeting transcript: "${result.task.title}".`;
+    }
+
+    if (toolName === 'get_my_tasks') {
+      const tasks = result.tasks || [];
+      if (tasks.length === 0) return 'You have no pending assigned tasks for this event.';
+      const list = tasks.map(t => `• ${t.title} [Priority: ${t.priority || 'Normal'}, Due: ${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'TBD'}]`).join('\n');
+      return `Here are your assigned tasks (${tasks.length} total):\n${list}`;
+    }
+
+    if (toolName === 'mark_task_done') {
+      return `Task "${result.task ? result.task.title : 'Task'}" has been marked as done. Your active workload has been updated.`;
+    }
+
+    if (toolName === 'get_my_shifts') {
+      const shifts = result.shifts || [];
+      if (shifts.length === 0) return 'No shifts currently scheduled for your profile.';
+      const list = shifts.map(s => `• ${s}`).join('\n');
+      return `Your scheduled shift hours:\n${list}`;
+    }
+
+    if (toolName === 'raise_risk') {
+      return result.message || `Risk reported to core team Risk Radar: "${result.risk?.title}".`;
+    }
+
+    if (toolName === 'search_events') {
+      const events = result.events || [];
+      if (events.length === 0) return 'No matching campus events or hackathons found.';
+      const list = events.map(e => `• ${e.title} (${e.type || 'Event'}) — ${new Date(e.eventDate).toLocaleDateString()} at ${e.venue}. RSVP: ${e.registrationUrl}`).join('\n');
+      return `Found ${events.length} campus event(s):\n${list}`;
+    }
+
+    if (toolName === 'get_event_details') {
+      return `Event: ${result.title}\nDate: ${new Date(result.eventDate).toLocaleDateString()}\nVenue: ${result.venue}\nDetails: ${result.description}\nRegistration: ${result.registrationUrl}`;
+    }
+
+    if (toolName === 'save_event') {
+      return `Event saved to your personal bookmarks.`;
+    }
+
+    if (toolName === 'search_knowledge') {
+      return result.answer || 'Information retrieved from knowledge base.';
     }
 
     return `Completed action [${toolName}] successfully.`;

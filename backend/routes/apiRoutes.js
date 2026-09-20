@@ -40,13 +40,20 @@ function taskInput(input, partial = false) {
   const task = {};
   if (!partial && !String(input.title || '').trim()) throw error('title is required.');
   if (input.title !== undefined) { const title = String(input.title).trim(); if (title.length < 3 || title.length > 160) throw error('Task title must be 3–160 characters.'); task.title = title; }
-  if (input.category !== undefined) task.category = String(input.category).trim().slice(0, 60) || 'Operations';
+  const cat = input.vertical || input.category;
+  if (cat !== undefined) task.category = String(cat).trim().slice(0, 60) || 'Operations';
+  if (input.vertical !== undefined) task.vertical = String(input.vertical).trim().slice(0, 60);
   if (input.priority !== undefined) task.priority = String(input.priority).trim().slice(0, 20);
   if (input.status !== undefined) { if (!TASK_STATUSES.has(input.status)) throw error('Task status is invalid.'); task.status = input.status; }
-  if (input.dueDate !== undefined) { const dueDate = new Date(input.dueDate); if (Number.isNaN(dueDate.getTime())) throw error('dueDate must be a valid date.'); task.dueDate = dueDate.toISOString(); }
+  const dueVal = input.dueDate || input.dueAt;
+  if (dueVal !== undefined) { const dueDate = new Date(dueVal); if (Number.isNaN(dueDate.getTime())) throw error('dueDate must be a valid date.'); task.dueDate = dueDate.toISOString(); }
   if (input.assigneeId !== undefined) task.assigneeId = input.assigneeId === null ? null : String(input.assigneeId).slice(0, 120);
+  if (input.source !== undefined) task.source = String(input.source).slice(0, 60);
+  if (input.estimateHours !== undefined) task.estimateHours = Number(input.estimateHours) || null;
+  if (input.evidenceQuote !== undefined) task.evidenceQuote = String(input.evidenceQuote).slice(0, 500);
   return task;
 }
+
 
 function publicEvent(event) {
   return {
@@ -224,6 +231,14 @@ async function handleApi(request, response, url, context) {
     return await handleAuthRoutes(request, response, url, context);
   }
 
+  // AI Copilot & AI services (Role-aware: Admin, Volunteer, or Student)
+  if (pathname.startsWith('/api/ai/')) {
+    const auth = await authenticateUser(request, context);
+    const user = auth ? auth.user : { id: 'guest-student', role: 'student', name: 'Student' };
+    const payload = auth ? auth.payload : null;
+    return await handleAiRoutes(request, response, url, { ...context, user, payload });
+  }
+
   const authentication = await authenticated(request, response, context);
   if (!authentication) return;
   const { user, payload } = authentication;
@@ -231,10 +246,6 @@ async function handleApi(request, response, url, context) {
   if (pathname.startsWith('/api/auth/') || pathname === '/api/users' || pathname.startsWith('/api/users/')) {
     const handled = await handleAuthRoutes(request, response, url, { ...context, user, payload });
     if (handled !== false) return handled;
-  }
-
-  if (pathname.startsWith('/api/ai/')) {
-    return await handleAiRoutes(request, response, url, { ...context, user, payload });
   }
 
   if (!isClubMember(user)) return failure(response, 403, 'Your role does not have access to private club operations.');
@@ -346,7 +357,47 @@ async function handleApi(request, response, url, context) {
     });
     return success(response, { meeting }, 201);
   }
+  if (request.method === 'POST' && pathname === '/api/tasks/bulk') {
+    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot create tasks.');
+    const input = await readJson(request);
+    const rawTasks = Array.isArray(input.tasks) ? input.tasks : (Array.isArray(input) ? input : []);
+    if (!rawTasks.length) return failure(response, 422, 'Tasks array cannot be empty.');
+    const createdTasks = [];
+    await context.store.update((data) => {
+      if (!data.tasks) data.tasks = [];
+      for (const item of rawTasks) {
+        const parsed = taskInput(item);
+        const task = {
+          id: crypto.randomUUID(),
+          ...parsed,
+          status: parsed.status || 'todo',
+          source: parsed.source || 'ai_plan',
+          assigneeId: parsed.assigneeId || null,
+          createdBy: user.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        data.tasks.unshift(task);
+        createdTasks.push(task);
+      }
+    });
+    return success(response, { createdCount: createdTasks.length, tasks: createdTasks }, 201);
+  }
+
+  const meetingProcessMatch = pathname.match(/^\/api\/meetings\/([^/]+)\/process$/);
+  if (request.method === 'POST' && meetingProcessMatch) {
+    const meetingId = meetingProcessMatch[1];
+    const input = await readJson(request);
+    const result = await context.aiOrchestrator.meetingService.processMeeting({
+      ...input,
+      meetingId,
+      aiModel: context.aiOrchestrator.aiModel
+    });
+    return sendJson(response, 200, result);
+  }
+
   if (request.method === 'GET' && pathname === '/api/announcements') return success(response, { announcements: (await context.store.read()).announcements });
+
   if (request.method === 'POST' && pathname === '/api/announcements') {
     if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot publish announcements.');
     const input = await readJson(request);
