@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planova — Campus Events</title>
+  <meta name="description" content="Planova — Browse upcoming campus club events, discover activities, and RSVP in one place." />
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       PLANOVA — Clean Light Theme  (mirrors dashboard.html exactly)
+       ══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --planova-primary: #4F46E5;
+      --planova-primary-dark: #3730A3;
+      --planova-cyan: #0E7490;
+      --planova-ink: #172554;
+      --planova-border: #C7D2FE;
+      --planova-surface: #EEF2FF;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      margin: 0; padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Card — identical to dashboard.html ── */
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: var(--planova-border);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.10);
+    }
+
+    /* ── Planova primary button ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: var(--planova-primary); color: #FFF; font-weight: 700;
+      border-radius: 12px; border: 1px solid var(--planova-primary-dark);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.20);
+      cursor: pointer; user-select: none;
+      transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
+    }
+    .btn-primary:hover:not(:disabled) { background:var(--planova-primary-dark); transform:translateY(-1px); box-shadow:0 4px 14px rgba(79, 70, 229, 0.28); }
+    .btn-primary:active:not(:disabled) { transform:translateY(0) scale(0.98); background:var(--planova-primary-dark); }
+    .btn-primary:disabled { opacity:0.45; cursor:not-allowed; }
+
+    /* ── Ghost / outline button ── */
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: transparent; color: #0F172A; font-weight: 700;
+      border-radius: 12px; border: 1px solid #E2E8F0;
+      cursor: pointer; user-select: none;
+      transition: all 0.15s ease;
+    }
+    .btn-ghost:hover { background:#F1F5F9; border-color:#CBD5E1; }
+
+    /* ── Scrollbar thin ── */
+    .scrollbar-thin::-webkit-scrollbar { width:4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background:#F1F5F9; border-radius:999px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:999px; }
+
+    /* ── Modal backdrop animation ── */
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .modal-backdrop { animation: fadeIn 0.15s ease; }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .modal-panel { animation: slideUp 0.2s cubic-bezier(0.16,1,0.3,1); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    /* ══════════════════════════════════════════════════════════
+       MOCK EVENT DATA  (sample data — no backend call needed)
+       ══════════════════════════════════════════════════════════ */
+    const MOCK_EVENTS = [
+      {
+        id: 'evt-technova-2026',
+        name: 'TechNova Hackathon 2026',
+        description: 'A 36-hour open hackathon for students across all branches. Build, prototype, and pitch your idea to industry judges. Prizes worth ₹1,50,000 up for grabs. Teams of 2–4 members. All tracks welcome — AI, Web, Hardware, and Social Impact.',
+        type: 'Hackathon',
+        date: '2026-10-15',
+        time: '09:00 AM',
+        venue: 'Central Auditorium, Block A',
+        status: 'upcoming',
+        capacity: 300,
+        rsvpCount: 187,
+        organizer: 'IEEE Student Branch',
+        tags: ['Hackathon', 'Prizes', 'Teamwork'],
+        importantInfo: 'Bring your student ID card and laptop. Extension cords will be provided.'
+      },
+      {
+        id: 'evt-roboquest-2026',
+        name: 'RoboQuest 2026',
+        description: 'Annual robotics competition featuring line-follower, maze-solver, and autonomous combat bots. Individual and team entries welcome. Workshops on microcontrollers and embedded systems will be held the day before the main event.',
+        type: 'Competition',
+        date: '2026-10-22',
+        time: '10:00 AM',
+        venue: 'Engineering Block, Lab 301',
+        status: 'upcoming',
+        capacity: 150,
+        rsvpCount: 94,
+        organizer: 'Robotics Club',
+        tags: ['Robotics', 'Competition', 'STEM'],
+        importantInfo: 'Maximum bot weight limit is 5kg for combat rounds. No flying bots allowed.'
+      },
+      {
+        id: 'evt-cultural-fest-2026',
+        name: 'Cultural Fest 2026',
+        description: 'A two-day celebration of art, music, dance, and culture. Featuring live performances, food stalls, photography exhibitions, and an open-stage night. Open to all students, faculty, and guests. Free entry for RSVP holders.',
+        type: 'Cultural',
+        date: '2026-11-05',
+        time: '11:00 AM',
+        venue: 'Open Air Amphitheatre',
+        status: 'upcoming',
+        capacity: 800,
+        rsvpCount: 412,
+        organizer: 'Cultural Committee',
+        tags: ['Cultural', 'Music', 'Art', 'Open Stage'],
+        importantInfo: 'Event schedule is subject to change. Outside food and beverages are not allowed.'
+      },
+      {
+        id: 'evt-designsprint',
+        name: 'UI/UX Design Sprint',
+        description: 'A one-day intensive design sprint where participants tackle real-world UX challenges. Learn Figma, wireframing, user research, and rapid prototyping. Certificate of participation provided. Ideal for beginners and intermediate designers.',
+        type: 'Workshop',
+        date: '2026-10-08',
+        time: '09:30 AM',
+        venue: 'Seminar Hall 2, Block C',
+        status: 'in_progress',
+        capacity: 60,
+        rsvpCount: 58,
+        organizer: 'Design Society',
+        tags: ['Design', 'Figma', 'Workshop'],
+        importantInfo: 'Figma must be installed before the event. Access to Wi-Fi will be provided.'
+      },
+      {
+        id: 'evt-startup-summit',
+        name: 'Campus Startup Summit',
+        description: 'A half-day summit bringing together student entrepreneurs, mentors, and investors. Pitch your startup idea in front of a panel. Keynotes from alumni founders. Networking lunch included for RSVP holders.',
+        type: 'Summit',
+        date: '2026-10-29',
+        time: '01:00 PM',
+        venue: 'Seminar Hall 1, Admin Block',
+        status: 'upcoming',
+        capacity: 120,
+        rsvpCount: 73,
+        organizer: 'E-Cell',
+        tags: ['Startup', 'Networking', 'Pitch'],
+        importantInfo: 'Formal attire required. Pitch decks must be submitted 2 days before the event.'
+      },
+      {
+        id: 'evt-codequest',
+        name: 'CodeQuest Competitive Programming',
+        description: 'A 3-hour rated competitive programming contest open to all students. Problems range from beginner to expert. Leaderboard will be live during the contest. Top 10 performers receive goodies and certificates.',
+        type: 'Contest',
+        date: '2026-10-12',
+        time: '02:00 PM',
+        venue: 'Computer Lab 4, Block B',
+        status: 'in_progress',
+        capacity: 80,
+        rsvpCount: 79,
+        organizer: 'Coding Club',
+        tags: ['Competitive', 'Algorithms', 'Contest'],
+        importantInfo: 'Only C++, Java, and Python are supported. Use of external AI tools is prohibited.'
+      },
+    ];
+
+    const MOCK_ANNOUNCEMENTS = [
+      {
+        id: 'ann-1',
+        title: 'Wi-Fi Maintenance Notice',
+        message: 'Please note that campus Wi-Fi will undergo maintenance during the TechNova Hackathon. We are setting up dedicated secondary routers in the Central Auditorium, so internet access will not be interrupted for participants.',
+        date: '2026-10-10',
+        eventName: 'TechNova Hackathon 2026'
+      },
+      {
+        id: 'ann-2',
+        title: 'Registration Closing Soon',
+        message: 'Registrations for RoboQuest 2026 will close in exactly 48 hours. Please ensure your team members have all RSVP\'d using their university email addresses. No on-the-spot registrations will be accepted.',
+        date: '2026-10-20',
+        eventName: 'RoboQuest 2026'
+      },
+      {
+        id: 'ann-3',
+        title: 'Design Sprint Pre-requisites',
+        message: 'All participants must have Figma installed and an account created before attending the sprint. Please bring a mouse and your laptop charger.',
+        date: '2026-10-06',
+        eventName: 'UI/UX Design Sprint'
+      }
+    ];
+
+    const MOCK_PROFILE = {
+      name: 'Alex Green',
+      email: 'alex.green@campus.edu',
+      avatar: 'https://i.pravatar.cc/160?u=alex-green',
+      joinedDate: '19 Sep 2026',
+      rsvpCount: 0
+    };
+
+    /* ══════════════════════════════════════════════════════════
+       HELPERS
+       ══════════════════════════════════════════════════════════ */
+    const STATUS_CONFIG = {
+      upcoming:    { label: 'Upcoming',        dot: 'bg-slate-500',   badge: 'bg-slate-100 text-slate-700 border-slate-200'  },
+      in_progress: { label: 'Happening Now',   dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', ping: true },
+      completed:   { label: 'Completed',       dot: 'bg-slate-300',   badge: 'bg-slate-50 text-slate-400 border-slate-200'   },
+    };
+
+    const TYPE_CONFIG = {
+      Hackathon:   'bg-blue-50 text-blue-700 border-blue-200',
+      Competition: 'bg-amber-50 text-amber-700 border-amber-200',
+      Cultural:    'bg-purple-50 text-purple-700 border-purple-200',
+      Workshop:    'bg-teal-50 text-teal-700 border-teal-200',
+      Summit:      'bg-orange-50 text-orange-700 border-orange-200',
+      Contest:     'bg-rose-50 text-rose-700 border-rose-200',
+    };
+
+    function formatDate(dateStr, timeStr) {
+      try {
+        const d = new Date(dateStr);
+        const dateLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        return timeStr ? `${dateLabel} · ${timeStr}` : dateLabel;
+      } catch { return dateStr; }
+    }
+
+    function formatProfileDate(dateStr) {
+      const date = new Date(dateStr);
+      if (Number.isNaN(date.getTime())) return MOCK_PROFILE.joinedDate;
+      return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function capacityPercent(rsvpCount, capacity) {
+      if (!capacity) return 0;
+      return Math.min(100, Math.round((rsvpCount / capacity) * 100));
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ICONS
+       ══════════════════════════════════════════════════════════ */
+    const IconCalendar = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+    );
+    const IconLocation = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+    );
+    const IconUsers = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+    );
+    const IconCheck = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/>
+      </svg>
+    );
+    const IconClose = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    );
+    const IconSignOut = () => (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+      </svg>
+    );
+    const IconProfile = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      </svg>
+    );
+    const IconArrow = () => (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/>
+      </svg>
+    );
+    const IconTag = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+      </svg>
+    );
+    const IconOrg = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+      </svg>
+    );
+    const IconSpinner = () => (
+      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+      </svg>
+    );
+
+    /* ══════════════════════════════════════════════════════════
+       TOP BAR  (matches dashboard.html header structure)
+       ══════════════════════════════════════════════════════════ */
+    function TopBar({ user, onOpenCopilot }) {
+      const userName    = user?.name || user?.username || 'Guest';
+      const userInitial = (userName[0] || 'G').toUpperCase();
+
+      const handleSignOut = () => {
+        if (window.PlanovaAuth) window.PlanovaAuth.logout();
+        else location.assign('/');
+      };
+
+      return (
+        <header className="bg-white border-b border-[#E2E8F0] shadow-sm sticky top-0 z-30">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+
+            {/* Brand */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-white border border-[#C7D2FE] shadow-sm flex items-center justify-center p-1">
+                <img
+                  src="planova-logo.jpg"
+                  alt="Planova"
+                  className="w-full h-full object-contain"
+                  onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-[#3730A3] text-lg">P</span>'; }}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[1.7rem] font-black tracking-tight text-[#3730A3] leading-none">PLANOVA</span>
+                  <span className="hidden sm:inline text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#3730A3] border border-[#C7D2FE]">
+                    Campus Events
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Campus Club Hub</span>
+              </div>
+            </div>
+
+            {/* Right side */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onOpenCopilot}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition-colors"
+              >
+                <span>✦ Ask Planova AI</span>
+              </button>
+              <button
+                onClick={() => location.assign('profile.html')}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#EEF2FF] hover:bg-[#DCE3FF] text-[#3730A3] border border-[#C7D2FE] transition-colors"
+              >
+                <IconProfile /> Profile
+              </button>
+              {user && (
+                <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-[#0E7490] text-white text-xs font-bold flex items-center justify-center shadow-sm ring-2 ring-cyan-100">
+                      {userInitial}
+                    </div>
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"/>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="hidden sm:block text-sm font-extrabold text-slate-900 leading-tight">{userName}</span>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                      Web User
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    title="My Profile"
+                    onClick={() => location.assign('profile.html')}
+                    className="sm:hidden ml-1 p-1.5 rounded-lg text-slate-400 hover:text-[#3730A3] hover:bg-[#EEF2FF] transition-colors"
+                    aria-label="My Profile"
+                  >
+                    <IconProfile />
+                  </button>
+                  <button
+                    type="button"
+                    title="Sign out"
+                    onClick={handleSignOut}
+                    className="ml-1 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    aria-label="Sign out"
+                  >
+                    <IconSignOut/>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DASHBOARD SUMMARY CARDS
+       ══════════════════════════════════════════════════════════ */
+    function DashboardSummary({ events, rsvpedIds }) {
+      const upcomingCount = events.filter(e => e.status === 'upcoming').length;
+      const myRsvpsCount  = Object.keys(rsvpedIds).length;
+      
+      // Find the next event (simplistic mock logic - just pick the first in_progress or upcoming)
+      const nextEvent = events.find(e => e.status === 'in_progress') || events.find(e => e.status === 'upcoming') || events[0];
+      
+      // Mock announcement
+      const announcement = "Campus Wi-Fi maintenance scheduled during TechNova Hackathon.";
+
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Upcoming Events */}
+          <div className="clean-card p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+              <span>Upcoming Events</span>
+              <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+                <IconCalendar />
+              </div>
+            </div>
+            <div className="my-2">
+              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">{upcomingCount}</span>
+            </div>
+            <div className="text-xs font-medium text-slate-500">Open for registration</div>
+          </div>
+
+          {/* My RSVPs */}
+          <div className="clean-card p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+              <span>My RSVPs</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
+                <IconCheck />
+              </div>
+            </div>
+            <div className="my-2">
+              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">{myRsvpsCount}</span>
+            </div>
+            <div className="text-xs font-medium text-slate-500">Events you're attending</div>
+          </div>
+
+          {/* Next Event */}
+          <div className="clean-card p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+              <span>Next Event</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="my-2">
+              <span className="text-sm font-black text-slate-900 leading-tight line-clamp-1">{nextEvent.name}</span>
+            </div>
+            <div className="text-xs font-medium text-slate-500">{formatDate(nextEvent.date, nextEvent.time)}</div>
+          </div>
+
+          {/* Recent Announcements */}
+          <div className="clean-card p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+              <span>Announcements</span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+              </div>
+            </div>
+            <div className="my-2">
+              <span className="text-xs font-bold text-slate-800 leading-snug line-clamp-2">{announcement}</span>
+            </div>
+            <div className="text-[10px] font-black uppercase text-amber-600 mt-1">New</div>
+          </div>
+
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       MY PROFILE SECTION
+       ══════════════════════════════════════════════════════════ */
+    function MyProfileSection({ user, rsvpCount }) {
+      const profile = {
+        ...MOCK_PROFILE,
+        name: user?.name || user?.username || MOCK_PROFILE.name,
+        email: user?.email || MOCK_PROFILE.email,
+        joinedDate: user?.createdAt ? formatProfileDate(user.createdAt) : MOCK_PROFILE.joinedDate,
+      };
+      const userInitial = (profile.name[0] || 'A').toUpperCase();
+
+      return (
+        <section className="clean-card overflow-hidden" aria-labelledby="my-profile-title">
+          <div className="h-2 bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#0E7490]" />
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 rounded-2xl bg-[#EEF2FF] border border-[#C7D2FE] shadow-sm ring-4 ring-indigo-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <span className="text-2xl font-black text-[#3730A3]">{userInitial}</span>
+                  <img
+                    src={profile.avatar}
+                    alt={`${profile.name} profile picture`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={event => { event.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 id="my-profile-title" className="text-xl font-black text-[#172554] tracking-tight">My Profile</h2>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#EEF2FF] text-[#3730A3] border border-[#C7D2FE]">Web User</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Your Planova account at a glance.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-stretch lg:items-end gap-2">
+                <button
+                  type="button"
+                  disabled
+                  title="Profile editing is not available yet"
+                  aria-disabled="true"
+                  className="btn-ghost px-4 py-2.5 text-sm rounded-xl opacity-60 cursor-not-allowed"
+                >
+                  Edit Profile
+                </button>
+                <span className="text-[11px] font-medium text-slate-400 lg:text-right">Profile editing is not available yet.</span>
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+              <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3.5">
+                <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">User name</dt>
+                <dd className="text-sm font-bold text-slate-900 mt-1 break-words">{profile.name}</dd>
+              </div>
+              <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3.5">
+                <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">Email</dt>
+                <dd className="text-sm font-bold text-slate-900 mt-1 break-all">{profile.email}</dd>
+              </div>
+              <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3.5">
+                <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">Joined date</dt>
+                <dd className="text-sm font-bold text-slate-900 mt-1">{profile.joinedDate}</dd>
+              </div>
+              <div className="rounded-xl bg-[#EEF2FF] border border-[#C7D2FE] p-3.5">
+                <dt className="text-[10px] font-black uppercase tracking-wider text-[#6366F1]">RSVP'd events</dt>
+                <dd className="text-2xl font-black text-[#3730A3] mt-0.5">{rsvpCount}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       EVENT DETAIL MODAL
+       ══════════════════════════════════════════════════════════ */
+    function EventDetailModal({ event, rsvped, onRsvp, onClose }) {
+      const statusCfg = STATUS_CONFIG[event.status] || STATUS_CONFIG.upcoming;
+      const typeCls   = TYPE_CONFIG[event.type] || 'bg-slate-100 text-slate-700 border-slate-200';
+      const fillPct   = capacityPercent(event.rsvpCount, event.capacity);
+      const almostFull = fillPct >= 90;
+
+      // Close on Escape
+      useEffect(() => {
+        const handler = e => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+      }, []);
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}/>
+          {/* Panel */}
+          <div className="relative w-full max-w-lg clean-card p-0 overflow-hidden modal-panel">
+            {/* Modal header bar */}
+            <div className="bg-[#3730A3] px-6 py-5 flex items-start justify-between gap-3">
+              <div>
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${typeCls}`}>
+                  {event.type}
+                </span>
+                <h2 className="text-white font-black text-xl mt-2 leading-tight">{event.name}</h2>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {statusCfg.ping
+                    ? <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"/></span>
+                    : <span className={`w-2 h-2 rounded-full ${statusCfg.dot}`}/>
+                  }
+                  <span className="text-slate-300 text-xs font-semibold">{statusCfg.label}</span>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <IconClose/>
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="px-6 py-5 space-y-5 max-h-[60vh] overflow-y-auto scrollbar-thin">
+              {/* Description */}
+              <p className="text-sm text-slate-700 leading-relaxed">{event.description}</p>
+
+              {/* Info grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <span className="text-slate-400 mt-0.5"><IconCalendar/></span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Date & Time</p>
+                    <p className="text-xs font-bold text-slate-900 mt-0.5">{formatDate(event.date, event.time)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <span className="text-slate-400 mt-0.5"><IconLocation/></span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Venue</p>
+                    <p className="text-xs font-bold text-slate-900 mt-0.5">{event.venue}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <span className="text-slate-400 mt-0.5"><IconUsers/></span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Capacity</p>
+                    <p className="text-xs font-bold text-slate-900 mt-0.5">{event.rsvpCount} / {event.capacity} registered</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <span className="text-slate-400 mt-0.5"><IconOrg/></span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Organiser</p>
+                    <p className="text-xs font-bold text-slate-900 mt-0.5">{event.organizer}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Important Info */}
+              {event.importantInfo && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-amber-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </span>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-800">Important Information</h4>
+                  </div>
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    {event.importantInfo}
+                  </p>
+                </div>
+              )}
+
+              {/* Capacity bar */}
+              <div>
+                <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5">
+                  <span>Registration filling up</span>
+                  <span className={almostFull ? 'text-red-600' : ''}>{fillPct}% full</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${almostFull ? 'bg-red-500' : 'bg-[#4F46E5]'}`}
+                    style={{ width: `${fillPct}%` }}
+                  />
+                </div>
+                {almostFull && (
+                  <p className="text-[10px] font-bold text-red-600 mt-1">⚠ Almost full — RSVP now to secure your spot</p>
+                )}
+              </div>
+
+              {/* Tags */}
+              {event.tags?.length > 0 && (
+                <div className="flex items-center flex-wrap gap-2">
+                  <span className="text-slate-400"><IconTag/></span>
+                  {event.tags.map(tag => (
+                    <span key={tag} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between gap-3">
+              <button onClick={onClose} className="btn-ghost px-4 py-2.5 text-sm rounded-xl">
+                Close
+              </button>
+              {rsvped ? (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-emerald-600"><IconCheck/></span>
+                  <span className="text-sm font-bold text-emerald-700">RSVP Confirmed!</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { onRsvp(event); onClose(); }}
+                  className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold px-5 py-2.5 text-sm rounded-xl transition-colors shadow-sm"
+                >
+                  RSVP Now
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RSVP MODAL
+       ══════════════════════════════════════════════════════════ */
+    function RsvpModal({ event, onClose, onSuccess }) {
+      const [name,    setName]    = useState('');
+      const [email,   setEmail]   = useState('');
+      const [loading, setLoading] = useState(false);
+      const [error,   setError]   = useState(null);
+
+      const valid = name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+      useEffect(() => {
+        const handler = e => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+      }, []);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!valid || loading) return;
+        setLoading(true); setError(null);
+        try {
+          // Simulate network delay for mock/local RSVP
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // Successfully mock the RSVP
+          onSuccess(event.id);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}/>
+          <div className="relative w-full max-w-md clean-card p-0 overflow-hidden modal-panel">
+            {/* Header */}
+            <div className="bg-[#3730A3] px-6 py-5 flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">RSVP</span>
+                <h3 className="text-white font-black text-lg mt-1 leading-tight">{event.name}</h3>
+                <p className="text-slate-400 text-xs mt-1 flex items-center gap-1.5">
+                  <IconCalendar/>
+                  {formatDate(event.date, event.time)}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <IconClose/>
+              </button>
+            </div>
+
+            {/* Form body */}
+            <div className="px-6 py-5 space-y-4">
+              {error && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+                  {error}
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">Full Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Your full name"
+                    className="w-full px-3.5 py-2.5 text-sm border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] text-slate-900"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">Email Address <span className="text-red-500">*</span></label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="name@campus.edu"
+                    className="w-full px-3.5 py-2.5 text-sm border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] text-slate-900"
+                    required
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <button type="button" onClick={onClose} className="btn-ghost px-4 py-2.5 text-sm rounded-xl flex-1">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!valid || loading}
+                    className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold flex-1 py-2.5 text-sm rounded-xl transition-colors shadow-sm"
+                  >
+                    {loading ? <><IconSpinner/> Registering…</> : 'Confirm RSVP'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       EVENT CARD  (the main events-section card)
+       ══════════════════════════════════════════════════════════ */
+    function EventCard({ event, rsvped, onViewDetails, onRsvp }) {
+      const statusCfg = STATUS_CONFIG[event.status] || STATUS_CONFIG.upcoming;
+      const typeCls   = TYPE_CONFIG[event.type] || 'bg-slate-100 text-slate-700 border-slate-200';
+      const fillPct   = capacityPercent(event.rsvpCount, event.capacity);
+      const almostFull = fillPct >= 90;
+
+      return (
+        <article className="clean-card flex flex-col overflow-hidden group">
+          {/* Coloured top accent strip based on status */}
+          <div className={`h-1 w-full ${event.status === 'in_progress' ? 'bg-emerald-500' : 'bg-slate-200'}`}/>
+
+          <div className="p-5 flex flex-col gap-4 flex-1">
+            {/* Row 1: Type badge + Status */}
+            <div className="flex items-center justify-between gap-2">
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${typeCls}`}>
+                {event.type}
+              </span>
+              <div className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusCfg.badge}`}>
+                {statusCfg.ping
+                  ? <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"/></span>
+                  : <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}/>
+                }
+                {statusCfg.label}
+              </div>
+            </div>
+
+            {/* Row 2: Event name */}
+            <div>
+              <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-slate-700 transition-colors">
+                {event.name}
+              </h3>
+            </div>
+
+            {/* Row 3: Short description — clamped to 2 lines */}
+            <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 flex-1">
+              {event.description}
+            </p>
+
+            {/* Row 4: Meta info */}
+            <div className="space-y-1.5">
+              <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                <span className="text-blue-500"><IconCalendar/></span>
+                {formatDate(event.date, event.time)}
+              </p>
+              <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                <span className="text-blue-500"><IconLocation/></span>
+                {event.venue}
+              </p>
+              <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                <span className="text-blue-500"><IconUsers/></span>
+                {event.rsvpCount} / {event.capacity} registered
+              </p>
+            </div>
+
+            {/* Row 5: Capacity bar */}
+            <div>
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                  className={`h-full rounded-full transition-all duration-700 ${almostFull ? 'bg-red-500' : 'bg-[#4F46E5]'}`}
+                  style={{ width: `${fillPct}%` }}
+                />
+              </div>
+              {almostFull && (
+                <p className="text-[10px] font-bold text-red-500 mt-1">Almost full!</p>
+              )}
+            </div>
+          </div>
+
+          {/* Row 6: Action buttons */}
+          <div className="px-5 pb-5 flex gap-2.5">
+            <button
+              onClick={() => onViewDetails(event)}
+              className="btn-ghost flex-1 py-2 text-xs rounded-xl flex items-center justify-center gap-1.5"
+            >
+              View Details <IconArrow/>
+            </button>
+            {rsvped ? (
+              <div className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                <IconCheck/> RSVP'd
+              </div>
+            ) : (
+              <button
+                onClick={() => onRsvp(event)}
+                className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold flex-1 py-2 text-xs rounded-xl transition-colors shadow-sm"
+              >
+                RSVP Now
+              </button>
+            )}
+          </div>
+        </article>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FILTER BAR
+       ══════════════════════════════════════════════════════════ */
+    function FilterBar({ activeFilter, onFilter, typesAvailable }) {
+      const filters = [
+        { key: 'all',         label: 'All Events' },
+        { key: 'in_progress', label: 'Happening Now' },
+        { key: 'upcoming',    label: 'Upcoming' },
+      ];
+
+      return (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              onClick={() => onFilter(f.key)}
+              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                activeFilter === f.key
+                  ? 'bg-[#4F46E5] text-white border-[#3730A3] shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ANNOUNCEMENTS SECTION
+       ══════════════════════════════════════════════════════════ */
+    function AnnouncementsSection({ onReadMore }) {
+      return (
+        <section>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-black text-[#3730A3] tracking-tight">Recent Announcements</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Updates and notices from event organisers.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {MOCK_ANNOUNCEMENTS.map(ann => (
+              <div 
+                key={ann.id} 
+                className="clean-card p-4 flex flex-col gap-3 group cursor-pointer hover:border-amber-300 transition-colors" 
+                onClick={() => onReadMore(ann)}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-1 flex-1">
+                    {ann.title}
+                  </h4>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                    {ann.date}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed flex-1">{ann.message}</p>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg w-max border border-amber-200 mt-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                  {ann.eventName}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    function AnnouncementModal({ announcement, onClose }) {
+      useEffect(() => {
+        const handler = e => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+      }, []);
+
+      if (!announcement) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}/>
+          <div className="relative w-full max-w-md clean-card p-0 overflow-hidden modal-panel">
+            {/* Header */}
+            <div className="bg-amber-400 px-6 py-5 flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-widest text-amber-900">Announcement</span>
+                <h3 className="text-amber-950 font-black text-lg mt-1 leading-tight">{announcement.title}</h3>
+                <p className="text-amber-800 text-xs mt-1 font-bold">
+                  Posted {announcement.date}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-900/10 hover:bg-amber-900/20 flex items-center justify-center text-amber-900 transition-colors"
+                aria-label="Close"
+              >
+                <IconClose/>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                <span className="text-blue-500"><IconCalendar/></span>
+                Related Event: {announcement.eventName}
+              </div>
+              <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                {announcement.message}
+              </p>
+            </div>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex justify-end">
+              <button onClick={onClose} className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold px-5 py-2.5 text-sm rounded-xl transition-colors shadow-sm">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       MY EVENTS SECTION
+       ══════════════════════════════════════════════════════════ */
+    function MyEventsSection({ events, rsvpedIds, onDetailOpen }) {
+      const myEvents = events.filter(e => rsvpedIds[e.id]);
+
+      return (
+        <section>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-black text-[#3730A3] tracking-tight">My Events</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Events you have successfully registered to attend.</p>
+            </div>
+          </div>
+
+          {myEvents.length === 0 ? (
+            <div className="clean-card p-10 flex flex-col items-center text-center bg-[#F8FAFC]">
+              <div className="w-12 h-12 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center text-slate-400 mb-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+              </div>
+              <p className="text-sm font-black text-slate-900">No RSVPs yet</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">You haven't registered for any events. Browse the available events below to reserve your spot.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myEvents.map(ev => (
+                <div key={ev.id} className="clean-card p-4 flex flex-col gap-4 border-emerald-200 shadow-sm relative overflow-hidden">
+                  {/* Subtle green accent line */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400"></div>
+                  
+                  <div className="flex justify-between items-start gap-2 pt-1">
+                    <h4 className="text-sm font-black text-slate-900 leading-tight">{ev.name}</h4>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0 flex items-center gap-1.5 shadow-sm">
+                      <IconCheck /> Confirmed
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2 mt-auto pb-1">
+                    <p className="text-xs text-slate-700 font-medium flex items-center gap-2">
+                      <span className="text-blue-500"><IconCalendar/></span>
+                      {formatDate(ev.date, ev.time)}
+                    </p>
+                    <p className="text-xs text-slate-700 font-medium flex items-center gap-2">
+                      <span className="text-blue-500"><IconLocation/></span>
+                      {ev.venue}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => onDetailOpen(ev)}
+                    className="btn-ghost w-full py-2.5 text-xs rounded-xl flex items-center justify-center gap-1.5 mt-1 border-slate-200 hover:border-slate-300"
+                  >
+                    View Details <IconArrow/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       EVENTS SECTION
+       ══════════════════════════════════════════════════════════ */
+    function EventsSection({ rsvpedIds, onRsvp, onDetailOpen }) {
+      const [filter, setFilter] = useState('all');
+
+      const filtered = filter === 'all'
+        ? MOCK_EVENTS
+        : MOCK_EVENTS.filter(e => e.status === filter);
+
+      return (
+        <section>
+          {/* Section header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-black text-[#3730A3] tracking-tight">Available Events</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {filtered.length} event{filtered.length !== 1 ? 's' : ''} shown · Click <span className="font-bold text-slate-900">View Details</span> to learn more
+              </p>
+            </div>
+            <FilterBar activeFilter={filter} onFilter={setFilter}/>
+          </div>
+
+          {/* Event cards grid — responsive */}
+          {filtered.length === 0 ? (
+            <div className="clean-card p-16 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-3xl mb-4">📅</div>
+              <p className="text-base font-black text-slate-900">No events in this category</p>
+              <p className="text-sm text-slate-500 mt-1">Try switching the filter above.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filtered.map(ev => (
+                <EventCard
+                  key={ev.id}
+                  event={ev}
+                  rsvped={!!rsvpedIds[ev.id]}
+                  onViewDetails={onDetailOpen}
+                  onRsvp={onRsvp}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ROOT PAGE COMPONENT
+       ══════════════════════════════════════════════════════════ */
+    function UserPage() {
+      const [currentUser, setCurrentUser] = useState(() => {
+        try { return window.PlanovaAuth ? window.PlanovaAuth.user() : null; } catch { return null; }
+      });
+      const [rsvpedIds,   setRsvpedIds]   = useState({});
+      const [detailEvent, setDetailEvent] = useState(null); // for View Details modal
+      const [rsvpEvent,   setRsvpEvent]   = useState(null); // for RSVP modal
+
+      const [activeAnn,   setActiveAnn]   = useState(null); // for Announcement modal
+
+      // AI Copilot state
+      const [copilotOpen, setCopilotOpen] = useState(false);
+      const [query, setQuery] = useState('');
+      const [copilotLoading, setCopilotLoading] = useState(false);
+      const [messages, setMessages] = useState([
+        { role: 'ai', text: 'Hello! I am Planova Copilot. I can help you find events, check schedules, or answer questions about campus activities. How can I assist you today?' }
+      ]);
+
+      // Sync current user from session
+      useEffect(() => {
+        fetch('/api/auth/me')
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(payload => {
+            const u = payload.data?.user || payload.user;
+            if (u) {
+              setCurrentUser(u);
+              if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: u });
+            }
+          })
+          .catch(() => {});
+      }, []);
+
+      const [toastMsg, setToastMsg] = useState('');
+
+      const handleRsvpSuccess = (eventId) => {
+        setRsvpedIds(prev => ({ ...prev, [eventId]: true }));
+        setRsvpEvent(null);
+        setDetailEvent(null);
+        setToastMsg('RSVP Confirmed successfully!');
+        setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      const handleCopilotSubmit = (e) => {
+        e.preventDefault();
+        if (!query.trim() || copilotLoading) return;
+        const msg = query;
+        setMessages(m => [...m, { role: 'user', text: msg }]);
+        setQuery('');
+        setCopilotLoading(true);
+        fetch('/api/ai/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg })
+        })
+          .then(r => r.json())
+          .then(data => {
+            const reply = data.text || data.response || 'Done.';
+            setMessages(m => [...m, { role: 'ai', text: reply }]);
+          })
+          .catch(() => {
+            setMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+          })
+          .finally(() => setCopilotLoading(false));
+      };
+
+      const userName = currentUser?.name || currentUser?.username || null;
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {/* Toast Notification */}
+          {toastMsg && (
+            <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] animate-bounce">
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2">
+                <IconCheck /> {toastMsg}
+              </div>
+            </div>
+          )}
+
+          <TopBar user={currentUser} onOpenCopilot={() => setCopilotOpen(true)} />
+
+          <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+            {/* ── Greeting / Hero Bar ──────────────────────────────────── */}
+            <section className="clean-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#172554] tracking-tight">
+                  {userName ? `Welcome, ${userName}.` : 'Campus Events'}
+                </h2>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 mt-2">
+                  Browse open events, read full details, and reserve your spot — all in one place.
+                </p>
+              </div>
+              <div className="flex gap-2.5 flex-shrink-0">
+                <button onClick={() => setCopilotOpen(true)} className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold px-4 py-2 text-xs rounded-xl transition-colors shadow-sm">
+                  ✦ Ask Planova AI
+                </button>
+              </div>
+            </section>
+
+            {/* ── My Profile Section ───────────────────────────────────── */}
+            <MyProfileSection
+              user={currentUser}
+              rsvpCount={Object.keys(rsvpedIds).length}
+            />
+
+            {/* ── Stats Row ────────────────────────────────────────────── */}
+            <DashboardSummary events={MOCK_EVENTS} rsvpedIds={rsvpedIds} />
+
+            {/* ── My Events Section ────────────────────────────────────── */}
+            <MyEventsSection
+              events={MOCK_EVENTS}
+              rsvpedIds={rsvpedIds}
+              onDetailOpen={setDetailEvent}
+            />
+
+            {/* ── Announcements Section ────────────────────────────────── */}
+            <AnnouncementsSection onReadMore={setActiveAnn} />
+
+            {/* ── Events Section ───────────────────────────────────────── */}
+            <EventsSection
+              rsvpedIds={rsvpedIds}
+              onRsvp={setRsvpEvent}
+              onDetailOpen={setDetailEvent}
+            />
+
+            {/* ── Footer ───────────────────────────────────────────────── */}
+            <footer className="pb-8 text-center text-xs text-slate-400 font-medium">
+              © {new Date().getFullYear()} Planova Platform · Campus Club Hub
+            </footer>
+          </main>
+
+          {/* Floating Ask Planova Button */}
+          <div className="fixed bottom-6 right-6 z-40">
+            <button
+              onClick={() => setCopilotOpen(true)}
+              className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold transition-colors shadow-sm"
+            >
+              <span>✦ Ask Planova</span>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-300"></span>
+              </span>
+            </button>
+          </div>
+
+          {/* Slide-over Copilot Drawer */}
+          {copilotOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden modal-backdrop">
+              <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={() => setCopilotOpen(false)}></div>
+              <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                <div className="w-screen max-w-md bg-white shadow-2xl border-l border-[#E2E8F0] flex flex-col justify-between modal-panel">
+                  <div className="p-5 border-b border-indigo-900 flex items-center justify-between bg-[#3730A3] text-white">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-black">✦</span>
+                      <div>
+                        <h3 className="text-sm font-bold">Planova AI Copilot</h3>
+                        <p className="text-[10px] text-slate-300">Contextual Campus Assistant</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setCopilotOpen(false)} className="text-slate-300 hover:text-white font-bold">✕</button>
+                  </div>
+
+                  <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
+                    {messages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                          m.role === 'user' ? 'bg-[#4F46E5] text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-sm'
+                        }`}>
+                          {m.text}
+                        </div>
+                      </div>
+                    ))}
+                    {copilotLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-bl-none shadow-sm px-4 py-3 text-xs text-slate-400 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleCopilotSubmit} className="p-4 border-t border-slate-200 bg-white flex gap-2">
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      placeholder="Ask Planova AI..."
+                      className="flex-1 px-3.5 py-2.5 text-xs border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] text-slate-900"
+                      disabled={copilotLoading}
+                    />
+                    <button type="submit" className="bg-[#4F46E5] hover:bg-[#3730A3] text-white font-bold transition-colors shadow-sm" disabled={copilotLoading}>
+                      {copilotLoading ? '…' : 'Send'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Announcement Modal ────────────────────────────────────── */}
+          <AnnouncementModal
+            announcement={activeAnn}
+            onClose={() => setActiveAnn(null)}
+          />
+
+          {/* ── View Details Modal ────────────────────────────────────── */}
+          {detailEvent && (
+            <EventDetailModal
+              event={detailEvent}
+              rsvped={!!rsvpedIds[detailEvent.id]}
+              onRsvp={setRsvpEvent}
+              onClose={() => setDetailEvent(null)}
+            />
+          )}
+
+          {/* ── RSVP Modal ───────────────────────────────────────────── */}
+          {rsvpEvent && (
+            <RsvpModal
+              event={rsvpEvent}
+              onClose={() => setRsvpEvent(null)}
+              onSuccess={handleRsvpSuccess}
+            />
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<UserPage/>, document.getElementById('root'));
+  </script>
+</body>
+</html>

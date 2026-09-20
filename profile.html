@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planova — My Profile</title>
+  <meta name="description" content="Planova — View and edit your campus profile." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --planova-primary: #4F46E5;
+      --planova-primary-dark: #3730A3;
+      --planova-cyan: #0E7490;
+      --planova-ink: #172554;
+      --planova-border: #C7D2FE;
+      --planova-surface: #EEF2FF;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      margin: 0; padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .clean-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .clean-card:hover {
+      border-color: var(--planova-border);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.10);
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: var(--planova-primary); color: #FFF; font-weight: 700;
+      border-radius: 12px; border: 1px solid var(--planova-primary-dark);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.20);
+      cursor: pointer; user-select: none;
+      transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
+    }
+    .btn-primary:hover:not(:disabled) { background:var(--planova-primary-dark); transform:translateY(-1px); box-shadow:0 4px 14px rgba(79, 70, 229, 0.28); }
+    .btn-primary:active:not(:disabled) { transform:translateY(0) scale(0.98); background:var(--planova-primary-dark); }
+    .btn-primary:disabled { opacity:0.45; cursor:not-allowed; }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: transparent; color: #0F172A; font-weight: 700;
+      border-radius: 12px; border: 1px solid #E2E8F0;
+      cursor: pointer; user-select: none;
+      transition: all 0.15s ease;
+    }
+    .btn-ghost:hover { background:#F1F5F9; border-color:#CBD5E1; }
+
+    .planova-input {
+      width: 100%;
+      padding: 0.75rem 0.875rem;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      font-size: 0.875rem;
+      color: #0F172A;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    }
+    .planova-input::placeholder { color: #94A3B8; }
+    .planova-input:focus {
+      border-color: var(--planova-primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+    .planova-input:disabled { background-color: #F8FAFC; color: #64748B; cursor: not-allowed; }
+    .planova-input--error { border-color: #EF4444; }
+    .planova-input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12); }
+
+    .avatar-ring {
+      box-shadow: 0 0 0 4px #EEF2FF, 0 4px 14px rgba(79, 70, 229, 0.15);
+    }
+
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .modal-backdrop { animation: fadeIn 0.15s ease; }
+    .modal-panel { animation: slideUp 0.2s cubic-bezier(0.16,1,0.3,1); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const MOCK_EVENTS = [
+      { id: 'evt-technova-2026', name: 'TechNova Hackathon 2026', type: 'Hackathon', date: '2026-10-15', time: '09:00 AM', venue: 'Central Auditorium, Block A', status: 'upcoming' },
+      { id: 'evt-roboquest-2026', name: 'RoboQuest 2026', type: 'Competition', date: '2026-10-22', time: '10:00 AM', venue: 'Engineering Block, Lab 301', status: 'upcoming' },
+      { id: 'evt-cultural-fest-2026', name: 'Cultural Fest 2026', type: 'Cultural', date: '2026-11-05', time: '11:00 AM', venue: 'Open Air Amphitheatre', status: 'upcoming' },
+      { id: 'evt-designsprint', name: 'UI/UX Design Sprint', type: 'Workshop', date: '2026-10-08', time: '09:30 AM', venue: 'Seminar Hall 2, Block C', status: 'in_progress' },
+      { id: 'evt-startup-summit', name: 'Campus Startup Summit', type: 'Summit', date: '2026-10-29', time: '01:00 PM', venue: 'Seminar Hall 1, Admin Block', status: 'upcoming' },
+      { id: 'evt-codequest', name: 'CodeQuest Competitive Programming', type: 'Contest', date: '2026-10-12', time: '02:00 PM', venue: 'Computer Lab 4, Block B', status: 'in_progress' },
+    ];
+
+    const MOCK_RSVPS = ['evt-technova-2026', 'evt-designsprint'];
+
+    const DEFAULT_PROFILE = {
+      name: 'Alex Green',
+      email: 'alex.green@campus.edu',
+      avatar: 'https://i.pravatar.cc/320?u=alex-green',
+      joinedDate: '2026-09-19T10:35:43.356Z',
+      rsvps: MOCK_RSVPS
+    };
+
+    function formatDate(dateStr, timeStr) {
+      try {
+        const d = new Date(dateStr);
+        const dateLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        return timeStr ? `${dateLabel} · ${timeStr}` : dateLabel;
+      } catch { return dateStr; }
+    }
+
+    function formatJoinedDate(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function loadProfile() {
+      try {
+        const raw = localStorage.getItem('planova.profile');
+        if (!raw) return DEFAULT_PROFILE;
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_PROFILE, ...parsed };
+      } catch {
+        return DEFAULT_PROFILE;
+      }
+    }
+
+    function saveProfile(profile) {
+      try {
+        localStorage.setItem('planova.profile', JSON.stringify(profile));
+      } catch {}
+    }
+
+    const IconArrowLeft = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+    );
+    const IconCalendar = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+    );
+    const IconLocation = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+    );
+    const IconCamera = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+    );
+    const IconPencil = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+      </svg>
+    );
+    const IconCheck = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/>
+      </svg>
+    );
+    const IconUser = () => (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      </svg>
+    );
+
+    function TopBar({ user }) {
+      const userName = user?.name || user?.username || 'Guest';
+      const userInitial = (userName[0] || 'G').toUpperCase();
+      return (
+        <header className="bg-white border-b border-[#E2E8F0] shadow-sm sticky top-0 z-30">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-white border border-[#C7D2FE] shadow-sm flex items-center justify-center p-1">
+                <img
+                  src="planova-logo.jpg"
+                  alt="Planova"
+                  className="w-full h-full object-contain"
+                  onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span class="font-black text-[#3730A3] text-lg">P</span>'; }}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[1.7rem] font-black tracking-tight text-[#3730A3] leading-none">PLANOVA</span>
+                  <span className="hidden sm:inline text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#3730A3] border border-[#C7D2FE]">Campus Events</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Campus Club Hub</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => location.assign('user.html')}
+                className="btn-ghost px-3.5 py-2 text-xs rounded-xl"
+              >
+                Back to Events
+              </button>
+              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+                <div className="w-9 h-9 rounded-full bg-[#0E7490] text-white text-xs font-bold flex items-center justify-center shadow-sm ring-2 ring-cyan-100">
+                  {userInitial}
+                </div>
+                <span className="hidden sm:block text-sm font-extrabold text-slate-900 leading-tight">{userName}</span>
+              </div>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function AvatarEditor({ src, onChange, isEditing }) {
+      const [preview, setPreview] = useState(src);
+
+      useEffect(() => { setPreview(src); }, [src]);
+
+      const handleFile = (file) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (e) => { setPreview(e.target.result); onChange(e.target.result); };
+        reader.readAsDataURL(file);
+      };
+
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative group">
+            <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-[#EEF2FF] avatar-ring flex items-center justify-center text-[#3730A3]">
+              {preview ? (
+                <img src={preview} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <IconUser />
+              )}
+            </div>
+            {isEditing && (
+              <label
+                htmlFor="avatar-upload"
+                className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-[#4F46E5] hover:bg-[#3730A3] text-white shadow-md flex items-center justify-center cursor-pointer transition-colors"
+                title="Change profile picture"
+              >
+                <IconCamera />
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => handleFile(e.target.files[0])}
+                />
+              </label>
+            )}
+          </div>
+          {isEditing && (
+            <p className="text-[11px] font-medium text-slate-500">Click the camera to upload a new picture.</p>
+          )}
+        </div>
+      );
+    }
+
+    function EventListItem({ event }) {
+      return (
+        <div className="clean-card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#EEF2FF] text-[#3730A3] flex items-center justify-center flex-shrink-0">
+            <IconCalendar />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-black text-slate-900 truncate">{event.name}</h4>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-1">
+              <span className="inline-flex items-center gap-1"><IconCalendar /> {formatDate(event.date, event.time)}</span>
+              <span className="inline-flex items-center gap-1"><IconLocation /> {event.venue}</span>
+            </div>
+          </div>
+          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border capitalize flex-shrink-0 ${
+            event.status === 'in_progress'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-blue-50 text-blue-700 border-blue-200'
+          }`}>
+            {event.status.replace('_', ' ')}
+          </span>
+        </div>
+      );
+    }
+
+    function SaveToast({ message, onClose }) {
+      useEffect(() => {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+      }, [onClose]);
+
+      return (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100]">
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-5 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2">
+            <IconCheck /> {message}
+          </div>
+        </div>
+      );
+    }
+
+    function ProfilePage() {
+      const [currentUser, setCurrentUser] = useState(() => {
+        try { return window.PlanovaAuth ? window.PlanovaAuth.user() : null; } catch { return null; }
+      });
+      const [profile, setProfile] = useState(() => loadProfile());
+      const [isEditing, setIsEditing] = useState(false);
+      const [draft, setDraft] = useState(profile);
+      const [errors, setErrors] = useState({});
+      const [toast, setToast] = useState('');
+
+      useEffect(() => {
+        fetch('/api/auth/me')
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(payload => {
+            const u = payload.data?.user || payload.user;
+            if (u) {
+              setCurrentUser(u);
+              if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: u });
+            }
+          })
+          .catch(() => {});
+      }, []);
+
+      const userName = currentUser?.name || currentUser?.username || profile.name;
+      const joinedDisplay = currentUser?.createdAt ? formatJoinedDate(currentUser.createdAt) : formatJoinedDate(profile.joinedDate);
+
+      const rsvpEvents = MOCK_EVENTS.filter(ev => profile.rsvps.includes(ev.id));
+      const upcomingCount = rsvpEvents.filter(ev => ev.status === 'upcoming').length;
+      const pastCount = rsvpEvents.filter(ev => ev.status === 'completed').length;
+
+      const validate = (values) => {
+        const next = {};
+        const name = String(values.name || '').trim();
+        const email = String(values.email || '').trim();
+        if (!name) next.name = 'Name is required.';
+        else if (name.length < 2) next.name = 'Name must be at least 2 characters.';
+        if (!email) next.email = 'Email is required.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Please enter a valid email address.';
+        return next;
+      };
+
+      const handleEdit = () => {
+        setDraft(profile);
+        setErrors({});
+        setIsEditing(true);
+      };
+
+      const handleCancel = () => {
+        setDraft(profile);
+        setErrors({});
+        setIsEditing(false);
+      };
+
+      const handleSave = () => {
+        const validation = validate(draft);
+        if (Object.keys(validation).length > 0) {
+          setErrors(validation);
+          return;
+        }
+        const updated = { ...draft };
+        setProfile(updated);
+        saveProfile(updated);
+        setIsEditing(false);
+        setToast('Profile saved successfully.');
+      };
+
+      const handleAvatarChange = (newAvatar) => {
+        setDraft(prev => ({ ...prev, avatar: newAvatar }));
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+          {toast && <SaveToast message={toast} onClose={() => setToast('')} />}
+
+          <TopBar user={currentUser} />
+
+          <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Header */}
+            <section className="clean-card p-5 sm:p-6 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#172554] tracking-tight">My Profile</h1>
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 mt-2">View and manage your Planova account details.</p>
+                </div>
+                <div className="flex gap-2.5 flex-shrink-0">
+                  {!isEditing ? (
+                    <button
+                      onClick={handleEdit}
+                      className="btn-primary px-5 py-2.5 text-sm rounded-xl"
+                    >
+                      <IconPencil /> Edit Profile
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleCancel}
+                        className="btn-ghost px-5 py-2.5 text-sm rounded-xl"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        className="btn-primary px-5 py-2.5 text-sm rounded-xl"
+                      >
+                        <IconCheck /> Save Changes
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left: Identity */}
+              <section className="clean-card p-6 flex flex-col items-center text-center">
+                <AvatarEditor src={isEditing ? draft.avatar : profile.avatar} onChange={handleAvatarChange} isEditing={isEditing} />
+                <h2 className="text-lg font-black text-[#172554] mt-5">{profile.name}</h2>
+                <p className="text-sm text-slate-500 mt-1">{profile.email}</p>
+                <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EEF2FF] text-[#3730A3] border border-[#C7D2FE] text-[11px] font-black uppercase tracking-wider">
+                  Web User
+                </div>
+              </section>
+
+              {/* Right: Details */}
+              <section className="clean-card p-6 lg:col-span-2 space-y-6">
+                <div>
+                  <h3 className="text-base font-black text-[#3730A3] tracking-tight">Profile Information</h3>
+                  <p className="text-xs text-slate-500 mt-1">Update your name, email, and profile picture.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="profile-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 block mb-1.5">Full Name</label>
+                    <input
+                      id="profile-name"
+                      type="text"
+                      value={isEditing ? draft.name : profile.name}
+                      disabled={!isEditing}
+                      onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
+                      className={`planova-input ${errors.name ? 'planova-input--error' : ''}`}
+                      placeholder="Your full name"
+                    />
+                    {errors.name && <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="profile-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 block mb-1.5">Email Address</label>
+                    <input
+                      id="profile-email"
+                      type="email"
+                      value={isEditing ? draft.email : profile.email}
+                      disabled={!isEditing}
+                      onChange={e => setDraft(prev => ({ ...prev, email: e.target.value }))}
+                      className={`planova-input ${errors.email ? 'planova-input--error' : ''}`}
+                      placeholder="name@campus.edu"
+                    />
+                    {errors.email && <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-4">
+                    <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">Joined</dt>
+                    <dd className="text-sm font-bold text-slate-900 mt-1">{joinedDisplay}</dd>
+                  </div>
+                  <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-4">
+                    <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">RSVP'd</dt>
+                    <dd className="text-2xl font-black text-[#3730A3] mt-0.5">{rsvpEvents.length}</dd>
+                  </div>
+                  <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-4">
+                    <dt className="text-[10px] font-black uppercase tracking-wider text-slate-400">Upcoming</dt>
+                    <dd className="text-2xl font-black text-[#0E7490] mt-0.5">{upcomingCount}</dd>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* RSVP'd Events */}
+            <section className="mt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-base font-black text-[#3730A3] tracking-tight">My RSVP'd Events</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Events you have registered to attend.</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{upcomingCount} upcoming</span>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{pastCount} past</span>
+                </div>
+              </div>
+
+              {rsvpEvents.length === 0 ? (
+                <div className="clean-card p-10 flex flex-col items-center text-center bg-[#F8FAFC]">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center text-slate-400 mb-3">
+                    <IconCalendar />
+                  </div>
+                  <p className="text-sm font-black text-slate-900">No RSVPs yet</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs">You haven't registered for any events. Go back to the events page to reserve your spot.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {rsvpEvents.map(event => (
+                    <EventListItem key={event.id} event={event} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <footer className="pb-8 pt-10 text-center text-xs text-slate-400 font-medium">
+              © {new Date().getFullYear()} Planova Platform · Campus Club Hub
+            </footer>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<ProfilePage />, document.getElementById('root'));
+  </script>
+</body>
+</html>
