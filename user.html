@@ -1201,7 +1201,6 @@
         setTimeout(() => setToastMsg(''), 4000);
       };
 
-<<<<<<< HEAD
       const handleCancelRsvp = async (event) => {
         try {
           const response = await fetch(`/api/events/${event.id}/rsvp`, { method: 'DELETE' });
@@ -1219,7 +1218,6 @@
           setToastMsg(error.message || 'Could not cancel your RSVP.');
         }
       };
-=======
     /* ══════════════════════════════════════════════════════════
        COLORFUL RICH TEXT PARSER
        ══════════════════════════════════════════════════════════ */
@@ -1406,7 +1404,6 @@
         // 5. General intelligent response
         return `I have access to details on all **${events.length} campus events** currently active, including dates, venues, schedules, rules, and registrations. Ask me about TechNova, RoboQuest, DesignSprint, or any campus activity!`;
       }
->>>>>>> a7e920041e38a5599c89fd9e05b9c3c5f39f2b6b
 
       const handleCopilotSubmit = (e) => {
         e.preventDefault();
@@ -1435,7 +1432,7 @@
             setMessages(m => [...m, { role: 'ai', text: reply }]);
           })
           .catch(() => {
-            const fallbackReply = generateClientCopilotReply(msg, INITIAL_EVENTS, currentUser);
+            const fallbackReply = generateClientCopilotReply(msg, events && events.length > 0 ? events : (typeof MOCK_EVENTS !== 'undefined' ? MOCK_EVENTS : []), currentUser);
             setMessages(m => [...m, { role: 'ai', text: fallbackReply }]);
           })
           .finally(() => setCopilotLoading(false));

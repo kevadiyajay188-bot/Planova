@@ -60,7 +60,8 @@ class AuthController {
   }
 
   async getProfile(request, response, user) {
-    return success(response, { profile: this.authService.publicUser(user) });
+    const profile = await this.authService.getProfile(user);
+    return success(response, { profile });
   }
 
   async updateProfile(request, response, user) {

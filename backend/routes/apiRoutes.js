@@ -329,13 +329,23 @@ async function handleApi(request, response, url, context) {
 
   const saveAnnMatch = pathname.match(/^\/api\/announcements\/([^/]+)\/save$/);
   if (request.method === 'POST' && saveAnnMatch) {
+    const auth = await authenticateUser(request, context);
+    const userId = auth ? auth.user.id : (request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'guest');
     const id = saveAnnMatch[1];
     let updatedSaved = false;
     await context.store.update((data) => {
       const ann = (data.announcements || []).find((candidate) => candidate.id === id);
       if (!ann) throw error('Announcement not found.', 404);
-      ann.saved = !ann.saved;
-      updatedSaved = ann.saved;
+      if (!Array.isArray(data.bookmarks)) data.bookmarks = [];
+      const bookmarkIndex = data.bookmarks.findIndex((b) => b.userId === userId && b.announcementId === id);
+      if (bookmarkIndex >= 0) {
+        data.bookmarks.splice(bookmarkIndex, 1);
+        updatedSaved = false;
+      } else {
+        data.bookmarks.push({ id: `bm-${crypto.randomUUID()}`, userId, announcementId: id, createdAt: new Date().toISOString() });
+        updatedSaved = true;
+      }
+      ann.saved = updatedSaved;
     });
     return success(response, { id, saved: updatedSaved }, 200, { message: updatedSaved ? 'Announcement saved.' : 'Announcement removed from saved.' });
   }
@@ -595,10 +605,319 @@ async function handleApi(request, response, url, context) {
     if (!requirePolicy(response, user, 'MANAGEMENT')) return;
     return success(response, { documents: scopeCollection((await context.store.read()).documents, user).map(({ content, ...document }) => document) });
   }
+  if (request.method === 'POST' && pathname === '/api/documents') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot upload documents.');
+    const input = await readJson(request);
+    const docType = String(input.docType || input.title || '').trim();
+    if (!docType || docType.length > 200) return failure(response, 422, 'docType/title is required (max 200 chars).');
+    const doc = await context.store.update((data) => {
+      const created = {
+        id: crypto.randomUUID(), clubId: user.clubId, docType, title: docType,
+        fileName: String(input.fileName || '').slice(0, 260),
+        fileUrl: String(input.fileUrl || '').slice(0, 2000),
+        mimeType: String(input.mimeType || 'application/octet-stream').slice(0, 80),
+        fileSize: String(input.fileSize || '').slice(0, 40),
+        vertical: String(input.vertical || '').slice(0, 80),
+        category: String(input.category || 'document').slice(0, 80),
+        assignee: input.assignee || null,
+        dueDate: input.dueDate ? new Date(input.dueDate).toISOString().slice(0, 10) : null,
+        status: 'pending_review',
+        uploadedBy: user.id,
+        uploadedByName: user.name || user.username,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      };
+      data.documents.push(created);
+      return created;
+    });
+    return success(response, { document: doc }, 201);
+  }
+  const documentStatusMatch = pathname.match(/^\/api\/documents\/([^/]+)\/status$/);
+  if (request.method === 'PATCH' && documentStatusMatch) {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot update document status.');
+    const input = await readJson(request);
+    const validStatuses = ['pending_review', 'approved', 'rejected', 'revision_needed'];
+    if (!validStatuses.includes(input.status)) return failure(response, 422, `status must be one of: ${validStatuses.join(', ')}`);
+    const updated = await context.store.update((data) => {
+      const index = (data.documents || []).findIndex((d) => d.id === documentStatusMatch[1] && belongsToClub(d, user));
+      if (index < 0) return null;
+      data.documents[index] = { ...data.documents[index], status: input.status, reviewNote: String(input.reviewNote || '').slice(0, 500), reviewedBy: user.id, updatedAt: new Date().toISOString() };
+      return data.documents[index];
+    });
+    return updated ? success(response, { document: updated }) : failure(response, 404, 'Document not found.');
+  }
+
   if (request.method === 'GET' && pathname === '/api/risks') {
     if (!requirePolicy(response, user, 'MANAGEMENT')) return;
     return success(response, { risks: scopeCollection((await context.store.read()).risks, user) });
   }
+  if (request.method === 'POST' && pathname === '/api/risks') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot create risks.');
+    const input = await readJson(request);
+    const title = String(input.title || input.risk || '').trim();
+    if (!title || title.length > 300) return failure(response, 422, 'title is required (max 300 chars).');
+    const risk = await context.store.update((data) => {
+      const created = {
+        id: crypto.randomUUID(), clubId: user.clubId, title,
+        severity: ['low', 'medium', 'high', 'critical'].includes(input.severity) ? input.severity : 'medium',
+        likelihood: ['low', 'high'].includes(input.likelihood) ? input.likelihood : 'medium',
+        impact: ['low', 'medium', 'high'].includes(input.impact) ? input.impact : 'medium',
+        facts: String(input.facts || '').slice(0, 2000),
+        aiExplanation: String(input.aiExplanation || '').slice(0, 2000),
+        mitigationSteps: Array.isArray(input.mitigationSteps) ? input.mitigationSteps.map((s) => ({ text: String(s.text || s).slice(0, 500), done: Boolean(s.done) })) : [],
+        owner: String(input.owner || user.name || user.username || '').slice(0, 100),
+        isEscalated: Boolean(input.isEscalated),
+        status: ['open', 'mitigated', 'closed'].includes(input.status) ? input.status : 'open',
+        eventId: input.eventId ? String(input.eventId).slice(0, 120) : null,
+        createdBy: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      };
+      data.risks.push(created);
+      return created;
+    });
+    return success(response, { risk }, 201);
+  }
+  const riskMatch = pathname.match(/^\/api\/risks\/([^/]+)$/);
+  if (riskMatch && request.method === 'PATCH') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot update risks.');
+    const input = await readJson(request);
+    const updated = await context.store.update((data) => {
+      const index = (data.risks || []).findIndex((r) => r.id === riskMatch[1] && belongsToClub(r, user));
+      if (index < 0) return null;
+      const curr = data.risks[index];
+      data.risks[index] = {
+        ...curr,
+        ...(input.title !== undefined && { title: String(input.title).trim().slice(0, 300) }),
+        ...(input.severity !== undefined && { severity: input.severity }),
+        ...(input.likelihood !== undefined && { likelihood: input.likelihood }),
+        ...(input.impact !== undefined && { impact: input.impact }),
+        ...(input.facts !== undefined && { facts: String(input.facts).slice(0, 2000) }),
+        ...(input.aiExplanation !== undefined && { aiExplanation: String(input.aiExplanation).slice(0, 2000) }),
+        ...(input.mitigationSteps !== undefined && { mitigationSteps: Array.isArray(input.mitigationSteps) ? input.mitigationSteps.map((s) => ({ text: String(s.text || s).slice(0, 500), done: Boolean(s.done) })) : curr.mitigationSteps }),
+        ...(input.owner !== undefined && { owner: String(input.owner).slice(0, 100) }),
+        ...(input.isEscalated !== undefined && { isEscalated: Boolean(input.isEscalated) }),
+        ...(input.status !== undefined && { status: input.status }),
+        updatedAt: new Date().toISOString()
+      };
+      return data.risks[index];
+    });
+    return updated ? success(response, { risk: updated }) : failure(response, 404, 'Risk not found.');
+  }
+
+  // Volunteer portal routes (volunteer-scoped task/shift access)
+  if (request.method === 'GET' && pathname === '/api/volunteer/tasks') {
+    const data = await context.store.read();
+    const tasks = scopeCollection(data.tasks, user).filter((t) => t.assigneeId === user.id);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const enriched = tasks.map((t) => {
+      const due = t.dueDate || t.deadline || '';
+      const overdue = due && due < today && t.status !== 'done';
+      let group = 'later';
+      if (due === today) group = 'today';
+      else if (due && due <= new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10)) group = 'week';
+      return { ...t, overdue, group, dueAt: due, dueTimeStr: overdue ? 'Overdue' : (due ? `Due ${due}` : 'No deadline') };
+    });
+    const active = enriched.filter((t) => t.status !== 'done');
+    const completed = enriched.filter((t) => t.status === 'done');
+    return success(response, { tasks: active, completedTasks: completed });
+  }
+  const volunteerTaskMatch = pathname.match(/^\/api\/volunteer\/tasks\/([^/]+)$/);
+  if (volunteerTaskMatch && request.method === 'PATCH') {
+    const input = await readJson(request);
+    const updated = await context.store.update((data) => {
+      const index = (data.tasks || []).findIndex((t) => t.id === volunteerTaskMatch[1] && t.assigneeId === user.id && belongsToClub(t, user));
+      if (index < 0) return null;
+      // Volunteers can only update status and blockedReason
+      const allowed = {};
+      if (input.status !== undefined && TASK_STATUSES.has(input.status)) allowed.status = input.status;
+      if (input.blockedReason !== undefined) allowed.blockedReason = String(input.blockedReason).slice(0, 500);
+      data.tasks[index] = { ...data.tasks[index], ...allowed, updatedAt: new Date().toISOString() };
+      return data.tasks[index];
+    });
+    return updated ? success(response, { task: updated }) : failure(response, 404, 'Task not found or not assigned to you.');
+  }
+  const volunteerProofMatch = pathname.match(/^\/api\/volunteer\/tasks\/([^/]+)\/proof$/);
+  if (volunteerProofMatch && request.method === 'POST') {
+    const input = await readJson(request);
+    const proofUrl = String(input.proofUrl || input.photoUrl || input.url || '').trim();
+    if (!proofUrl || proofUrl.length > 2000) return failure(response, 422, 'proofUrl is required.');
+    const updated = await context.store.update((data) => {
+      const index = (data.tasks || []).findIndex((t) => t.id === volunteerProofMatch[1] && t.assigneeId === user.id && belongsToClub(t, user));
+      if (index < 0) return null;
+      data.tasks[index] = { ...data.tasks[index], proofPhoto: proofUrl, proofUploadedAt: new Date().toISOString(), proofUploadedBy: user.id, updatedAt: new Date().toISOString() };
+      return data.tasks[index];
+    });
+    return updated ? success(response, { task: updated }) : failure(response, 404, 'Task not found or not assigned to you.');
+  }
+  if (request.method === 'GET' && pathname === '/api/volunteer/shifts') {
+    const data = await context.store.read();
+    const shifts = scopeCollection(data.shifts || [], user).filter((s) => s.assigneeId === user.id || s.volunteerId === user.id);
+    return success(response, { shifts });
+  }
+
+  // Volunteer management (President/management only)
+  if (request.method === 'POST' && pathname === '/api/volunteers') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot add volunteers.');
+    const input = await readJson(request);
+    const name = String(input.name || '').trim();
+    if (!name || name.length > 120) return failure(response, 422, 'name is required (max 120 chars).');
+    const vol = await context.store.update((data) => {
+      const created = {
+        id: crypto.randomUUID(), clubId: user.clubId, name,
+        email: String(input.email || '').trim().slice(0, 254),
+        avatar: String(input.avatar || name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 3)).slice(0, 10),
+        role: String(input.role || 'Volunteer').slice(0, 60),
+        vertical: String(input.vertical || 'General').slice(0, 80),
+        skills: Array.isArray(input.skills) ? input.skills.map((s) => String(s).slice(0, 80)).slice(0, 20) : [],
+        openTasks: 0, availability: Array.isArray(input.availability) ? input.availability.slice(0, 7) : [1, 1, 1, 1, 1, 0, 0],
+        status: 'active', addedBy: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      };
+      data.volunteers.push(created);
+      return created;
+    });
+    return success(response, { volunteer: vol }, 201);
+  }
+  const volunteerMatch = pathname.match(/^\/api\/volunteers\/([^/]+)$/);
+  if (volunteerMatch && request.method === 'PATCH') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot update volunteers.');
+    const input = await readJson(request);
+    const updated = await context.store.update((data) => {
+      const index = (data.volunteers || []).findIndex((v) => v.id === volunteerMatch[1] && belongsToClub(v, user));
+      if (index < 0) return null;
+      const curr = data.volunteers[index];
+      data.volunteers[index] = {
+        ...curr,
+        ...(input.name !== undefined && { name: String(input.name).trim().slice(0, 120) }),
+        ...(input.email !== undefined && { email: String(input.email).trim().slice(0, 254) }),
+        ...(input.role !== undefined && { role: String(input.role).slice(0, 60) }),
+        ...(input.vertical !== undefined && { vertical: String(input.vertical).slice(0, 80) }),
+        ...(input.skills !== undefined && { skills: Array.isArray(input.skills) ? input.skills.map((s) => String(s).slice(0, 80)).slice(0, 20) : curr.skills }),
+        ...(input.availability !== undefined && { availability: Array.isArray(input.availability) ? input.availability.slice(0, 7) : curr.availability }),
+        ...(input.status !== undefined && { status: String(input.status).slice(0, 40) }),
+        updatedAt: new Date().toISOString()
+      };
+      return data.volunteers[index];
+    });
+    return updated ? success(response, { volunteer: updated }) : failure(response, 404, 'Volunteer not found.');
+  }
+  if (request.method === 'POST' && pathname === '/api/volunteers/assign') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot assign volunteers.');
+    const input = await readJson(request);
+    const taskId = String(input.taskId || '').trim();
+    const volunteerId = String(input.volunteerId || '').trim();
+    if (!taskId || !volunteerId) return failure(response, 422, 'taskId and volunteerId are required.');
+    const updated = await context.store.update((data) => {
+      const tIndex = (data.tasks || []).findIndex((t) => t.id === taskId && belongsToClub(t, user));
+      if (tIndex < 0) throw error('Task not found.', 404);
+      const vol = (data.volunteers || []).find((v) => v.id === volunteerId && belongsToClub(v, user));
+      if (!vol) throw error('Volunteer not found in this club.', 404);
+      data.tasks[tIndex] = { ...data.tasks[tIndex], assigneeId: volunteerId, assigneeName: vol.name, updatedAt: new Date().toISOString() };
+      return data.tasks[tIndex];
+    });
+    return success(response, { task: updated });
+  }
+
+  // Task deletion (President only)
+  const taskDeleteMatch = pathname.match(/^\/api\/tasks\/([^/]+)$/);
+  if (taskDeleteMatch && request.method === 'DELETE') {
+    if (!requirePolicy(response, user, 'PRESIDENT', 'Only Presidents can delete tasks.')) return;
+    const removed = await context.store.update((data) => {
+      const index = (data.tasks || []).findIndex((t) => t.id === taskDeleteMatch[1] && belongsToClub(t, user));
+      return index < 0 ? null : data.tasks.splice(index, 1)[0];
+    });
+    return removed ? success(response, { id: removed.id }) : failure(response, 404, 'Task not found.');
+  }
+
+  // Deadlines endpoint — derived from tasks and events
+  if (request.method === 'GET' && pathname === '/api/deadlines') {
+    const data = await context.store.read();
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const weekFromNow = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+    const nextWeek = new Date(now.getTime() + 14 * 86400000).toISOString().slice(0, 10);
+
+    function getGroup(dueAt) {
+      if (!dueAt) return 'Later';
+      if (dueAt <= today) return 'Today';
+      if (dueAt <= weekFromNow) return `This week`;
+      if (dueAt <= nextWeek) return 'Next week';
+      return 'Later';
+    }
+
+    const taskDeadlines = scopeCollection(data.tasks || [], user)
+      .filter((t) => t.status !== 'done' && (t.dueDate || t.deadline))
+      .map((t) => {
+        const dueAt = t.dueDate || t.deadline || '';
+        return {
+          id: `dl-task-${t.id}`, type: 'task', title: t.title || t.name || 'Task',
+          owner: t.assigneeName || t.assigneeId || 'Unassigned',
+          dueAt, overdue: dueAt < today, group: getGroup(dueAt), sourceId: t.id
+        };
+      });
+
+    const eventDeadlines = scopeCollection(data.events || [], user)
+      .filter((e) => e.status !== 'completed' && e.eventDate)
+      .map((e) => {
+        const dueAt = e.eventDate ? e.eventDate.slice(0, 10) : '';
+        return {
+          id: `dl-event-${e.id}`, type: 'meeting', title: `Event: ${e.name || 'Unnamed'}`,
+          owner: e.organizer || 'Club',
+          dueAt, overdue: dueAt < today, group: getGroup(dueAt), sourceId: e.id
+        };
+      });
+
+    const meetingDeadlines = scopeCollection(data.meetings || [], user)
+      .flatMap((m) => (m.actionItems || []).filter((a) => a.deadline).map((a) => {
+        const dueAt = a.deadline ? a.deadline.slice(0, 10) : '';
+        return {
+          id: `dl-mtg-${m.id}-${a.text?.slice(0, 8) || Math.random()}`, type: 'meeting',
+          title: a.text || 'Meeting action item', owner: a.owner || 'Team',
+          dueAt, overdue: dueAt < today, group: getGroup(dueAt), sourceId: m.id
+        };
+      }));
+
+    const all = [...taskDeadlines, ...eventDeadlines, ...meetingDeadlines]
+      .sort((a, b) => (a.dueAt || '').localeCompare(b.dueAt || ''));
+    return success(response, { deadlines: all });
+  }
+
+  // Knowledge / RAG routes
+  if (request.method === 'GET' && pathname === '/api/knowledge/documents') {
+    if (!requirePolicy(response, user, 'MANAGEMENT')) return;
+    const data = await context.store.read();
+    const docs = scopeCollection(data.knowledge || [], user);
+    return success(response, { documents: docs });
+  }
+  if (request.method === 'POST' && pathname === '/api/knowledge/upload') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot upload knowledge documents.');
+    const input = await readJson(request);
+    const name = String(input.name || input.title || '').trim();
+    if (!name || name.length > 300) return failure(response, 422, 'name is required (max 300 chars).');
+    const doc = await context.store.update((data) => {
+      if (!Array.isArray(data.knowledge)) data.knowledge = [];
+      const created = {
+        id: `src-${crypto.randomUUID().slice(0, 8)}`, clubId: user.clubId, name,
+        category: String(input.category || 'General').slice(0, 80),
+        content: String(input.content || '').slice(0, 100000),
+        fileUrl: String(input.fileUrl || '').slice(0, 2000),
+        pages: Number(input.pages) || 1,
+        status: 'indexed',
+        indexedDate: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
+        uploadedBy: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      };
+      data.knowledge.push(created);
+      return created;
+    });
+    return success(response, { document: doc }, 201);
+  }
+
+  // Bookmarks — list user's saved announcements
+  if (request.method === 'GET' && pathname === '/api/announcements/bookmarks') {
+    const data = await context.store.read();
+    const userBookmarkIds = (data.bookmarks || []).filter((b) => b.userId === user.id).map((b) => b.announcementId);
+    const bookmarked = (data.announcements || []).filter((a) => userBookmarkIds.includes(a.id)).map(publicAnnouncement);
+    return success(response, { bookmarks: bookmarked });
+  }
+
   if (pathname === '/api/club/settings') {
     if (!requirePolicy(response, user, 'PRESIDENT')) return;
     if (request.method === 'GET') {

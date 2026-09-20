@@ -173,6 +173,27 @@ function createAuthService(store, config) {
     return publicUser(updated);
   }
 
+  async function getProfile(user) {
+    const data = await store.read();
+    const currentUser = (data.users || []).find((u) => u.id === user.id) || user;
+    const userRsvps = (data.rsvps || []).filter((r) => r.userId === user.id && r.status === 'CONFIRMED');
+    const rsvpIds = userRsvps.map((r) => r.eventId);
+    const rsvpEvents = (data.events || []).filter((e) => rsvpIds.includes(e.id)).map((e) => ({
+      id: e.id,
+      name: e.name,
+      type: e.type || e.category || 'General',
+      date: e.date || (e.eventDate ? e.eventDate.slice(0, 10) : ''),
+      time: e.time || '10:00 AM',
+      venue: e.venue || 'Campus Auditorium',
+      status: e.status || 'upcoming'
+    }));
+    return {
+      ...publicUser(currentUser),
+      rsvps: rsvpIds,
+      rsvpEvents
+    };
+  }
+
   async function logout(user, sessionId) {
     if (!sessionId) return;
     await tokenService.revokeSession(store, user.id, sessionId);
@@ -230,6 +251,7 @@ function createAuthService(store, config) {
     signup: register,
     bootstrap,
     login,
+    getProfile,
     updateProfile,
     logout,
     refresh,

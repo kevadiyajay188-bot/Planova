@@ -32,9 +32,10 @@ function migrateData(data) {
   }
   migrated.sessions = Array.isArray(data.sessions) ? data.sessions : [];
   migrated.rsvps = Array.isArray(data.rsvps) ? data.rsvps : [];
+  migrated.bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks : [];
   migrated.settings = data.settings && typeof data.settings === 'object' ? data.settings : {};
   migrated.version = Math.max(Number(data.version) || 1, 2);
-  const scopedCollections = ['events', 'tasks', 'risks', 'volunteers', 'meetings', 'documents', 'announcements', 'activities', 'budgets'];
+  const scopedCollections = ['events', 'tasks', 'risks', 'volunteers', 'meetings', 'documents', 'announcements', 'activities', 'budgets', 'shifts', 'knowledge'];
   for (const collection of scopedCollections) {
     migrated[collection] = Array.isArray(data[collection])
       ? data[collection].map((record) => ({ ...record, clubId: record.clubId || fallbackClubId }))

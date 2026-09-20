@@ -33,7 +33,7 @@ function getConfig(overrides = {}) {
     aiProvider: overrides.aiProvider || process.env.AI_PROVIDER || 'gemini',
     aiModel: overrides.aiModel || process.env.AI_MODEL || 'gemini-3.6-flash',
     aiApiKey: overrides.aiApiKey || process.env.AI_API_KEY || '',
-    aiAutonomy: overrides.aiAutonomy || process.env.AI_AUTONOMY || 'AUTO',
+    aiAutonomy: overrides.aiAutonomy || process.env.AI_AUTONOMY || 'ASK_FOR_RISKY',
     bootstrapSecret: overrides.bootstrapSecret || process.env.BOOTSTRAP_ADMIN_SECRET || '',
     loginRateLimitAttempts: numberFromEnv(overrides.loginRateLimitAttempts ?? process.env.LOGIN_RATE_LIMIT_ATTEMPTS, 8),
     loginRateLimitWindowMinutes: numberFromEnv(overrides.loginRateLimitWindowMinutes ?? process.env.LOGIN_RATE_LIMIT_WINDOW_MINUTES, 15)

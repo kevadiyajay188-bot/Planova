@@ -58,13 +58,9 @@ function createSeedData(options = {}) {
 
   return {
     version: 2,
-<<<<<<< HEAD
     clubs: [],
     memberships: [],
-    users: [],
-=======
     users: demoUsers,
->>>>>>> a7e920041e38a5599c89fd9e05b9c3c5f39f2b6b
     sessions: [],
     rsvps: [],
     settings: {},

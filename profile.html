@@ -375,7 +375,9 @@
       const userName = currentUser?.name || currentUser?.username || profile.name;
       const joinedDisplay = currentUser?.createdAt ? formatJoinedDate(currentUser.createdAt) : formatJoinedDate(profile.joinedDate);
 
-      const rsvpEvents = MOCK_EVENTS.filter(ev => profile.rsvps.includes(ev.id));
+      const rsvpEvents = Array.isArray(profile.rsvpEvents) && profile.rsvpEvents.length > 0
+        ? profile.rsvpEvents
+        : MOCK_EVENTS.filter(ev => Array.isArray(profile.rsvps) && profile.rsvps.includes(ev.id));
       const upcomingCount = rsvpEvents.filter(ev => ev.status === 'upcoming').length;
       const pastCount = rsvpEvents.filter(ev => ev.status === 'completed').length;
 
