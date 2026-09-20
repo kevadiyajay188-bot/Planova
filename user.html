@@ -244,6 +244,7 @@
     };
 
     function formatDate(dateStr, timeStr) {
+      if (!dateStr) return 'Date to be announced';
       try {
         const d = new Date(dateStr);
         const dateLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -260,6 +261,21 @@
     function capacityPercent(rsvpCount, capacity) {
       if (!capacity) return 0;
       return Math.min(100, Math.round((rsvpCount / capacity) * 100));
+    }
+
+    function normalizeEvent(event) {
+      const date = event.date || event.eventDate || '';
+      return {
+        ...event,
+        date,
+        time: event.time || '',
+        capacity: event.capacity || event.expectedAttendance || 0,
+        rsvpCount: event.rsvpCount || 0,
+        tags: Array.isArray(event.tags) ? event.tags : [],
+        description: event.description || '',
+        organizer: event.organizer || '',
+        importantInfo: event.importantInfo || ''
+      };
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -428,7 +444,7 @@
       const myRsvpsCount  = Object.keys(rsvpedIds).length;
       
       // Find the next event (simplistic mock logic - just pick the first in_progress or upcoming)
-      const nextEvent = events.find(e => e.status === 'in_progress') || events.find(e => e.status === 'upcoming') || events[0];
+      const nextEvent = events.find(e => e.status === 'in_progress') || events.find(e => e.status === 'upcoming') || events[0] || { name: 'No events scheduled', date: '', time: '' };
       
       // Mock announcement
       const announcement = "Campus Wi-Fi maintenance scheduled during TechNova Hackathon.";
@@ -582,7 +598,7 @@
     /* ══════════════════════════════════════════════════════════
        EVENT DETAIL MODAL
        ══════════════════════════════════════════════════════════ */
-    function EventDetailModal({ event, rsvped, onRsvp, onClose }) {
+    function EventDetailModal({ event, rsvped, detailError, onRsvp, onClose }) {
       const statusCfg = STATUS_CONFIG[event.status] || STATUS_CONFIG.upcoming;
       const typeCls   = TYPE_CONFIG[event.type] || 'bg-slate-100 text-slate-700 border-slate-200';
       const fillPct   = capacityPercent(event.rsvpCount, event.capacity);
@@ -627,6 +643,7 @@
 
             {/* Modal body */}
             <div className="px-6 py-5 space-y-5 max-h-[60vh] overflow-y-auto scrollbar-thin">
+              {detailError && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700">{detailError}</div>}
               {/* Description */}
               <p className="text-sm text-slate-700 leading-relaxed">{event.description}</p>
 
@@ -736,9 +753,9 @@
     /* ══════════════════════════════════════════════════════════
        RSVP MODAL
        ══════════════════════════════════════════════════════════ */
-    function RsvpModal({ event, onClose, onSuccess }) {
-      const [name,    setName]    = useState('');
-      const [email,   setEmail]   = useState('');
+    function RsvpModal({ event, user, onClose, onSuccess }) {
+      const [name,    setName]    = useState(user?.name || user?.username || '');
+      const [email,   setEmail]   = useState(user?.email || '');
       const [loading, setLoading] = useState(false);
       const [error,   setError]   = useState(null);
 
@@ -755,10 +772,13 @@
         if (!valid || loading) return;
         setLoading(true); setError(null);
         try {
-          // Simulate network delay for mock/local RSVP
-          await new Promise(resolve => setTimeout(resolve, 800));
-          
-          // Successfully mock the RSVP
+          const response = await fetch(`/api/events/${event.id}/rsvp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim(), email: email.trim() })
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || 'Could not confirm your RSVP.');
           onSuccess(event.id);
         } catch (err) {
           setError(err.message);
@@ -967,7 +987,7 @@
     /* ══════════════════════════════════════════════════════════
        MY EVENTS SECTION
        ══════════════════════════════════════════════════════════ */
-    function MyEventsSection({ events, rsvpedIds, onDetailOpen }) {
+    function MyEventsSection({ events, rsvpedIds, onDetailOpen, onCancel }) {
       const myEvents = events.filter(e => rsvpedIds[e.id]);
 
       return (
@@ -1020,6 +1040,12 @@
                   >
                     View Details <IconArrow/>
                   </button>
+                  <button
+                    onClick={() => onCancel(ev)}
+                    className="text-xs font-bold text-slate-500 hover:text-red-600 transition-colors"
+                  >
+                    Cancel RSVP
+                  </button>
                 </div>
               ))}
             </div>
@@ -1031,12 +1057,12 @@
     /* ══════════════════════════════════════════════════════════
        EVENTS SECTION
        ══════════════════════════════════════════════════════════ */
-    function EventsSection({ rsvpedIds, onRsvp, onDetailOpen }) {
+    function EventsSection({ events, loading, error, rsvpedIds, onRsvp, onDetailOpen }) {
       const [filter, setFilter] = useState('all');
 
       const filtered = filter === 'all'
-        ? MOCK_EVENTS
-        : MOCK_EVENTS.filter(e => e.status === filter);
+        ? events
+        : events.filter(e => e.status === filter);
 
       return (
         <section>
@@ -1052,7 +1078,17 @@
           </div>
 
           {/* Event cards grid — responsive */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="clean-card p-16 flex flex-col items-center text-center">
+              <IconSpinner />
+              <p className="text-sm font-black text-slate-900 mt-3">Loading events...</p>
+            </div>
+          ) : error ? (
+            <div className="clean-card p-16 flex flex-col items-center text-center">
+              <p className="text-sm font-black text-red-700">Could not load events</p>
+              <p className="text-xs text-slate-500 mt-1">{error}</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="clean-card p-16 flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-3xl mb-4">📅</div>
               <p className="text-base font-black text-slate-900">No events in this category</p>
@@ -1082,9 +1118,13 @@
       const [currentUser, setCurrentUser] = useState(() => {
         try { return window.PlanovaAuth ? window.PlanovaAuth.user() : null; } catch { return null; }
       });
+      const [events, setEvents] = useState([]);
+      const [eventsLoading, setEventsLoading] = useState(true);
+      const [eventsError, setEventsError] = useState('');
       const [rsvpedIds,   setRsvpedIds]   = useState({});
       const [detailEvent, setDetailEvent] = useState(null); // for View Details modal
       const [rsvpEvent,   setRsvpEvent]   = useState(null); // for RSVP modal
+      const [detailError, setDetailError] = useState('');
 
       // AI Copilot state
       const [copilotOpen, setCopilotOpen] = useState(false);
@@ -1108,14 +1148,75 @@
           .catch(() => {});
       }, []);
 
+      useEffect(() => {
+        setEventsLoading(true);
+        fetch('/api/events/public')
+          .then(async response => {
+            const payload = await response.json().catch(() => []);
+            if (!response.ok) throw new Error(payload.message || 'Please try again later.');
+            return Array.isArray(payload) ? payload : [];
+          })
+          .then(payload => setEvents(payload.map(normalizeEvent)))
+          .catch(error => setEventsError(error.message || 'Please try again later.'))
+          .finally(() => setEventsLoading(false));
+      }, []);
+
+      const loadMyEvents = () => {
+        fetch('/api/my-events')
+          .then(async response => {
+            const payload = await response.json().catch(() => []);
+            if (!response.ok) throw new Error(payload.message || 'Could not load your events.');
+            return Array.isArray(payload) ? payload : [];
+          })
+          .then(myEvents => setRsvpedIds(Object.fromEntries(myEvents.map(event => [event.id, true]))))
+          .catch(error => setEventsError(error.message || 'Could not load your events.'));
+      };
+
+      useEffect(() => { loadMyEvents(); }, []);
+
+      const handleDetailOpen = (event) => {
+        setDetailEvent(event);
+        setDetailError('');
+        fetch(`/api/events/${event.id}`)
+          .then(async response => {
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || 'Event not found.');
+            return payload;
+          })
+          .then(payload => setDetailEvent(normalizeEvent(payload.data || payload)))
+          .catch(error => {
+            setDetailError(error.message || 'Could not load event details.');
+            setToastMsg(error.message || 'Could not load event details.');
+          });
+      };
+
       const [toastMsg, setToastMsg] = useState('');
 
       const handleRsvpSuccess = (eventId) => {
         setRsvpedIds(prev => ({ ...prev, [eventId]: true }));
+        setEvents(prev => prev.map(event => event.id === eventId ? { ...event, rsvpCount: (event.rsvpCount || 0) + 1 } : event));
         setRsvpEvent(null);
         setDetailEvent(null);
         setToastMsg('RSVP Confirmed successfully!');
         setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      const handleCancelRsvp = async (event) => {
+        try {
+          const response = await fetch(`/api/events/${event.id}/rsvp`, { method: 'DELETE' });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || 'Could not cancel your RSVP.');
+          setRsvpedIds(prev => {
+            const next = { ...prev };
+            delete next[event.id];
+            return next;
+          });
+          setEvents(prev => prev.map(item => item.id === event.id ? { ...item, rsvpCount: Math.max(0, (item.rsvpCount || 0) - 1) } : item));
+          setToastMsg('RSVP cancelled.');
+          setTimeout(() => setToastMsg(''), 4000);
+        } catch (error) {
+          setToastMsg(error.message || 'Could not cancel your RSVP.');
+        }
       };
 
       const handleCopilotSubmit = (e) => {
@@ -1182,20 +1283,24 @@
             />
 
             {/* ── Stats Row ────────────────────────────────────────────── */}
-            <DashboardSummary events={MOCK_EVENTS} rsvpedIds={rsvpedIds} />
+            <DashboardSummary events={events} rsvpedIds={rsvpedIds} />
 
             {/* ── My Events Section ────────────────────────────────────── */}
             <MyEventsSection
-              events={MOCK_EVENTS}
+              events={events}
               rsvpedIds={rsvpedIds}
-              onDetailOpen={setDetailEvent}
+              onDetailOpen={handleDetailOpen}
+              onCancel={handleCancelRsvp}
             />
 
             {/* ── Events Section ───────────────────────────────────────── */}
             <EventsSection
+              events={events}
+              loading={eventsLoading}
+              error={eventsError}
               rsvpedIds={rsvpedIds}
               onRsvp={setRsvpEvent}
-              onDetailOpen={setDetailEvent}
+              onDetailOpen={handleDetailOpen}
             />
 
             {/* ── Footer ───────────────────────────────────────────────── */}
@@ -1279,6 +1384,7 @@
             <EventDetailModal
               event={detailEvent}
               rsvped={!!rsvpedIds[detailEvent.id]}
+              detailError={detailError}
               onRsvp={setRsvpEvent}
               onClose={() => setDetailEvent(null)}
             />
@@ -1288,6 +1394,7 @@
           {rsvpEvent && (
             <RsvpModal
               event={rsvpEvent}
+              user={currentUser}
               onClose={() => setRsvpEvent(null)}
               onSuccess={handleRsvpSuccess}
             />

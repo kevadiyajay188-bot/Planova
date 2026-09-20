@@ -269,24 +269,6 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Mock /api/auth/* for preview
-    const originalFetch = window.fetch;
-    window.fetch = async (url, options) => {
-      if (typeof url === 'string' && url.startsWith('/api/auth/')) {
-        await new Promise(res => setTimeout(res, 800));
-        const body = options && options.body ? JSON.parse(options.body) : {};
-        if (url === '/api/auth/login') {
-          if (body.username === 'error') return { ok: false, json: async () => ({ message: 'Invalid username or password. Please try again.' }) };
-          return { ok: true, json: async () => ({ token: 'mock-jwt-token-xyz123', message: 'Signed in successfully!' }) };
-        }
-        if (url === '/api/auth/signup') {
-          if (body.email === 'taken@campus.edu') return { ok: false, json: async () => ({ message: 'An account with this email already exists.' }) };
-          return { ok: true, json: async () => ({ token: 'mock-signup-token-abc789', message: 'Account created!' }) };
-        }
-      }
-      return originalFetch(url, options);
-    };
-
     function AuthPage() {
       const [currentUser] = useState(() => {
         try { return window.PlanovaAuth ? window.PlanovaAuth.user() : null; } catch { return null; }
@@ -365,11 +347,13 @@
           const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: signInData.username.trim(), password: signInData.password }) });
           const data = await res.json().catch(()=>({}));
           if (data.token) localStorage.setItem('token', data.token);
+          if (!res.ok || !data.token || !(data.data?.user || data.user)) throw new Error(data.message || 'Invalid username or password.');
           const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
-          const isVolunteer = signInRole === 'volunteer' || (user && user.role === 'Volunteer') || signInData.username.toLowerCase().includes('volunteer') || signInData.username.toLowerCase().includes('aman');
-          setApiSuccess(isVolunteer ? 'Signed in as Volunteer! Opening My Tasks…' : 'Signed in as President! Opening Executive Dashboard…');
+          const isVolunteer = user && user.role === 'VOLUNTEER';
+          const isWebUser = user && user.role === 'WEB_USER';
+          setApiSuccess(isWebUser ? 'Signed in! Opening Campus Events…' : isVolunteer ? 'Signed in as Volunteer! Opening My Tasks…' : 'Signed in! Opening your dashboard…');
           setTimeout(() => {
-            window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html';
+            if (window.PlanovaAuth) window.PlanovaAuth.redirectForRole(user);
           }, 1000);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');
@@ -386,11 +370,13 @@
           const data = await res.json().catch(()=>({}));
           if (!res.ok) throw new Error(data.message || 'Registration failed.');
           if (data.token) localStorage.setItem('token', data.token);
+          if (!data.token || !(data.data?.user || data.user)) throw new Error(data.message || 'Registration failed.');
           const user = window.PlanovaAuth ? window.PlanovaAuth.setSession(data) : data.data?.user;
-          const isVolunteer = signUpData.role === 'Volunteer' || (user && user.role === 'Volunteer');
-          setApiSuccess(isVolunteer ? 'Volunteer account created! Opening My Tasks…' : 'Account created! Opening Executive Dashboard…');
+          const isVolunteer = user && user.role === 'VOLUNTEER';
+          const isWebUser = user && user.role === 'WEB_USER';
+          setApiSuccess(isWebUser ? 'Account created! Opening Campus Events…' : isVolunteer ? 'Volunteer account created! Opening My Tasks…' : 'Account created! Opening your dashboard…');
           setTimeout(() => {
-            window.location.href = isVolunteer ? 'my-tasks.html' : 'dashboard.html';
+            if (window.PlanovaAuth) window.PlanovaAuth.redirectForRole(user);
           }, 1000);
         } catch (err) {
           setApiError(err.message || 'An error occurred. Please try again.');

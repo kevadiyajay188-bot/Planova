@@ -2,6 +2,8 @@ const crypto = require('node:crypto');
 const { readJson, sendJson, success, failure, notFound } = require('../utils/http');
 const { authenticateUser, authorizeRoles, canManageEvents, isPresident, isTeamLead, isClubMember } = require('../middleware/auth');
 const { ROLES } = require('../auth/roles');
+const { belongsToClub, scopeCollection } = require('../middleware/clubScope');
+const { requirePolicy, requireClubResource, canManageClub } = require('../middleware/authorization');
 const { handleAiRoutes } = require('./aiRoutes');
 const { handleAuthRoutes } = require('./authRoutes');
 
@@ -10,6 +12,76 @@ const TASK_STATUSES = new Set(['todo', 'doing', 'review', 'blocked', 'done']);
 const RISK_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
 const PHASES = new Set(['Concept', 'Approvals', 'Promotion', 'Logistics', 'Execution']);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isPublicEvent(event) {
+  return event.visibility !== 'private' && ['in_progress', 'upcoming'].includes(event.status);
+}
+
+function isPublicAnnouncement(announcement) {
+  return announcement.visibility !== 'private' && announcement.isInternal !== true && announcement.status !== 'DRAFT';
+}
+
+function announcementInput(input, partial = false) {
+  const result = {};
+  const title = input.title !== undefined ? input.title : input.subject;
+  const content = input.content !== undefined ? input.content : (input.body !== undefined ? input.body : input.description);
+  if (!partial && (title === undefined || content === undefined)) throw error('title and content are required.');
+  if (title !== undefined) {
+    const value = String(title).trim();
+    if (value.length < 3 || value.length > 200) throw error('Announcement title must be 3–200 characters.');
+    result.title = value;
+  }
+  if (content !== undefined) {
+    const value = String(content).trim();
+    if (!value || value.length > 10000) throw error('Announcement content must be 1–10000 characters.');
+    result.content = value;
+  }
+  if (input.eventId !== undefined) result.eventId = input.eventId === null ? null : String(input.eventId).slice(0, 120);
+  if (input.audience !== undefined) result.audience = String(input.audience).trim().slice(0, 160);
+  if (input.purpose !== undefined) result.purpose = String(input.purpose).trim().slice(0, 120);
+  if (input.category !== undefined) result.category = String(input.category).trim().slice(0, 80);
+  if (input.channels !== undefined) result.channels = Array.isArray(input.channels) ? input.channels.map((channel) => String(channel).slice(0, 40)).slice(0, 8) : [];
+  if (input.variants !== undefined) result.variants = input.variants && typeof input.variants === 'object' ? input.variants : {};
+  if (input.visibility !== undefined) { if (!['public', 'private'].includes(input.visibility)) throw error('visibility is invalid.'); result.visibility = input.visibility; }
+  if (input.status !== undefined) { if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(input.status)) throw error('status is invalid.'); result.status = input.status; }
+  if (input.featured !== undefined) result.featured = Boolean(input.featured);
+  if (input.scale !== undefined) result.scale = String(input.scale).slice(0, 40);
+  if (input.venue !== undefined) result.venue = String(input.venue).slice(0, 200);
+  if (input.eventDate !== undefined) result.eventDate = new Date(input.eventDate).toISOString();
+  return result;
+}
+
+function publicAnnouncement(announcement) {
+  return {
+    id: announcement.id,
+    eventId: announcement.eventId || null,
+    title: announcement.title,
+    subject: announcement.title,
+    description: announcement.description || announcement.content || '',
+    content: announcement.content || announcement.body || '',
+    body: announcement.body || announcement.content || '',
+    clubName: announcement.clubName || 'Planova Club',
+    collegeName: announcement.collegeName || 'Campus Central',
+    category: announcement.category || announcement.purpose || 'General',
+    purpose: announcement.purpose || '',
+    audience: announcement.audience || 'Club members',
+    channels: announcement.channels || [],
+    variants: announcement.variants || {},
+    author: announcement.author || announcement.authorName || announcement.sentBy || '',
+    sentBy: announcement.sentBy || announcement.author || announcement.authorName || '',
+    status: announcement.status || 'PUBLISHED',
+    visibility: announcement.visibility || 'public',
+    featured: Boolean(announcement.featured),
+    venue: announcement.venue || '',
+    eventDate: announcement.eventDate || announcement.sentAt || announcement.createdAt || new Date().toISOString(),
+    postedAt: announcement.postedAt || announcement.sentAt || announcement.createdAt || new Date().toISOString(),
+    createdAt: announcement.createdAt || announcement.sentAt,
+    updatedAt: announcement.updatedAt || announcement.sentAt,
+    coverPhotoUrl: announcement.coverPhotoUrl || '',
+    scale: announcement.scale || 'college',
+    registrationUrl: announcement.registrationUrl || undefined
+  };
+}
 
 function error(message, status = 422) {
   const instance = new Error(message);
@@ -23,7 +95,15 @@ function eventInput(input, partial = false) {
   if (!partial) for (const key of required) if (input[key] === undefined || input[key] === '') throw error(`${key} is required.`);
   if (input.name !== undefined) { const name = String(input.name).trim(); if (name.length < 3 || name.length > 120) throw error('Event name must be 3–120 characters.'); result.name = name; }
   if (input.type !== undefined) { const type = String(input.type).trim(); if (!type || type.length > 60) throw error('Event type is required.'); result.type = type; }
+  if (input.description !== undefined) { const description = String(input.description).trim(); if (description.length > 5000) throw error('description must be 5000 characters or fewer.'); result.description = description; }
   if (input.eventDate !== undefined) { const eventDate = new Date(input.eventDate); if (Number.isNaN(eventDate.getTime())) throw error('eventDate must be a valid date.'); result.eventDate = eventDate.toISOString(); }
+  if (input.time !== undefined) { const time = String(input.time).trim(); if (time.length > 40) throw error('time must be 40 characters or fewer.'); result.time = time; }
+  if (input.venue !== undefined) { const venue = String(input.venue).trim(); if (venue.length > 200) throw error('venue must be 200 characters or fewer.'); result.venue = venue; }
+  if (input.organizer !== undefined) { const organizer = String(input.organizer).trim(); if (organizer.length > 160) throw error('organizer must be 160 characters or fewer.'); result.organizer = organizer; }
+  if (input.visibility !== undefined) { if (!['public', 'private'].includes(input.visibility)) throw error('visibility is invalid.'); result.visibility = input.visibility; }
+  if (input.capacity !== undefined) { const capacity = Number(input.capacity); if (!Number.isInteger(capacity) || capacity < 0) throw error('capacity must be a non-negative integer.'); result.capacity = capacity; }
+  if (input.tags !== undefined) { if (!Array.isArray(input.tags) || input.tags.length > 20) throw error('tags must be an array of at most twenty values.'); result.tags = input.tags.map((tag) => String(tag).trim().slice(0, 60)).filter(Boolean); }
+  if (input.importantInfo !== undefined) { result.importantInfo = String(input.importantInfo).trim().slice(0, 2000); }
   if (input.percentComplete !== undefined) { const percent = Number(input.percentComplete); if (!Number.isInteger(percent) || percent < 0 || percent > 100) throw error('percentComplete must be an integer from 0 to 100.'); result.percentComplete = percent; }
   if (input.phase !== undefined) { if (!PHASES.has(input.phase)) throw error('phase is invalid.'); result.phase = input.phase; }
   if (input.riskLevel !== undefined) { if (!RISK_LEVELS.has(input.riskLevel)) throw error('riskLevel is invalid.'); result.riskLevel = input.riskLevel; }
@@ -59,10 +139,18 @@ function publicEvent(event) {
   return {
     id: event.id,
     name: event.name,
+    description: event.description || '',
     type: event.type,
+    date: event.date || event.eventDate,
+    time: event.time || '',
     eventDate: event.eventDate,
     status: event.status,
     venue: event.venue,
+    organizer: event.organizer || '',
+    capacity: event.capacity || event.expectedAttendance || 0,
+    rsvpCount: event.rsvpCount || 0,
+    tags: Array.isArray(event.tags) ? event.tags : [],
+    importantInfo: event.importantInfo || '',
     expectedAttendance: event.expectedAttendance,
     percentComplete: event.percentComplete
   };
@@ -89,30 +177,78 @@ async function handleApi(request, response, url, context) {
 
   // Public event discovery and RSVP are deliberately available without club credentials.
   if (request.method === 'GET' && pathname === '/api/events/public') {
-    const events = (await context.dashboard.events()).filter((event) => ['in_progress', 'upcoming'].includes(event.status)).map(publicEvent);
+    const events = (await context.dashboard.events()).filter(isPublicEvent).map(publicEvent);
     return sendJson(response, 200, events);
   }
   const rsvpMatch = pathname.match(/^\/api\/events\/([^/]+)\/rsvp$/);
-  if (request.method === 'POST' && rsvpMatch) {
-    const input = await readJson(request);
-    const name = String(input.name || '').trim();
-    const email = String(input.email || '').trim().toLowerCase();
-    if (name.length < 2 || name.length > 100 || !EMAIL_PATTERN.test(email)) return failure(response, 422, 'Please provide a valid name and email address.');
-    let rsvp;
+  if (rsvpMatch && ['POST', 'DELETE'].includes(request.method)) {
+    const authentication = await authenticated(request, response, context);
+    if (!authentication) return;
+    const { user } = authentication;
+    if (!requirePolicy(response, user, [ROLES.WEB_USER], 'Only Web Users can manage event RSVPs.')) return;
+    const input = request.method === 'POST' ? await readJson(request) : {};
+    if (request.method === 'POST') {
+      const name = String(input.name || user.name || user.username || '').trim();
+      const email = String(input.email || user.email || '').trim().toLowerCase();
+      if (name.length < 2 || name.length > 100 || !EMAIL_PATTERN.test(email)) return failure(response, 422, 'Please provide a valid name and email address.');
+      input.name = name;
+      input.email = email;
+    }
+
+    let result;
     await context.store.update((data) => {
-      const event = data.events.find((candidate) => candidate.id === rsvpMatch[1] && ['in_progress', 'upcoming'].includes(candidate.status));
-      if (!event) throw error('Event not found.', 404);
-      if (data.rsvps.some((candidate) => candidate.eventId === event.id && candidate.email === email)) throw error('You have already RSVP’d to this event.', 409);
-      rsvp = { id: crypto.randomUUID(), eventId: event.id, name, email, createdAt: new Date().toISOString() };
-      data.rsvps.push(rsvp);
+      const event = (data.events || []).find((candidate) => candidate.id === rsvpMatch[1] && candidate.clubId === user.clubId && isPublicEvent(candidate));
+      if (!event) throw error('Event not found or unavailable for RSVP.', 404);
+
+      const existing = (data.rsvps || []).find((candidate) => candidate.userId === user.id && candidate.eventId === event.id && candidate.clubId === user.clubId);
+      if (request.method === 'DELETE') {
+        if (!existing || existing.status !== 'CONFIRMED') throw error('RSVP not found.', 404);
+        existing.status = 'CANCELLED';
+        existing.updatedAt = new Date().toISOString();
+        result = existing;
+        return;
+      }
+
+      if (existing && existing.status === 'CONFIRMED') throw error('You have already RSVP’d to this event.', 409);
+      const now = new Date().toISOString();
+      if (existing) {
+        existing.status = 'CONFIRMED';
+        existing.updatedAt = now;
+        result = existing;
+        return;
+      }
+      result = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        eventId: event.id,
+        clubId: user.clubId,
+        name: input.name || user.name || user.username,
+        email: input.email || user.email,
+        status: 'CONFIRMED',
+        createdAt: now,
+        updatedAt: now
+      };
+      data.rsvps.push(result);
     });
-    return success(response, { id: rsvp.id, eventId: rsvp.eventId }, 201, { message: 'Your RSVP has been recorded.' });
+    return success(response, { id: result.id, eventId: result.eventId, status: result.status }, request.method === 'POST' ? 201 : 200, { message: request.method === 'POST' ? 'Your RSVP has been recorded.' : 'Your RSVP has been cancelled.' });
+  }
+  const publicEventMatch = pathname.match(/^\/api\/events\/([^/]+)$/);
+  if (publicEventMatch && request.method === 'GET') {
+    const data = await context.store.read();
+    const event = (data.events || []).find((candidate) => candidate.id === publicEventMatch[1] && isPublicEvent(candidate));
+    const publicAuthentication = await authenticateUser(request, context);
+    if (event && (!publicAuthentication || belongsToClub(event, publicAuthentication.user))) {
+      return sendJson(response, 200, publicEvent(event));
+    }
   }
 
   // Student Announcement Discovery Feed endpoints (accessible to students)
   if (request.method === 'GET' && pathname === '/api/announcements/featured') {
     const data = await context.store.read();
-    const announcements = Array.isArray(data.announcements) ? data.announcements : [];
+    const featuredAuthentication = await authenticateUser(request, context);
+    const announcements = (Array.isArray(data.announcements) ? data.announcements : [])
+      .filter(isPublicAnnouncement)
+      .filter((announcement) => !featuredAuthentication || belongsToClub(announcement, featuredAuthentication.user));
     const featured = announcements
       .filter((a) => a.featured || ['national', 'state'].includes(a.scale))
       .map((a) => ({
@@ -132,7 +268,10 @@ async function handleApi(request, response, url, context) {
 
   if (request.method === 'GET' && pathname === '/api/announcements/feed') {
     const data = await context.store.read();
-    const announcements = Array.isArray(data.announcements) ? data.announcements : [];
+    const feedAuthentication = await authenticateUser(request, context);
+    const announcements = (Array.isArray(data.announcements) ? data.announcements : [])
+      .filter(isPublicAnnouncement)
+      .filter((announcement) => !feedAuthentication || belongsToClub(announcement, feedAuthentication.user));
     const category = url.searchParams.get('category');
     const scope = url.searchParams.get('scope');
     const sort = url.searchParams.get('sort');
@@ -206,24 +345,23 @@ async function handleApi(request, response, url, context) {
     const data = await context.store.read();
     const ann = (data.announcements || []).find((candidate) => candidate.id === singleAnnMatch[1]);
     if (!ann) return failure(response, 404, 'Announcement not found.');
-    return sendJson(response, 200, {
-      id: ann.id,
-      eventId: ann.eventId || ann.id,
-      title: ann.title,
-      clubName: ann.clubName || 'Planova Club',
-      collegeName: ann.collegeName || 'Campus Central',
-      category: ann.category || 'Hackathon',
-      coverPhotoUrl: ann.coverPhotoUrl || '',
-      preview: ann.preview || ann.content || '',
-      body: ann.body || ann.content || '',
-      venue: ann.venue || 'Campus Auditorium',
-      eventDate: ann.eventDate || ann.sentAt || new Date().toISOString(),
-      postedAt: ann.postedAt || ann.sentAt || new Date().toISOString(),
-      saved: Boolean(ann.saved),
-      scale: ann.scale || 'college',
-      registrationUrl: ann.registrationUrl || undefined,
-      isMyClub: Boolean(ann.isMyClub)
-    });
+    const detailAuthentication = await authenticateUser(request, context);
+    if (detailAuthentication && !belongsToClub(ann, detailAuthentication.user)) return failure(response, 404, 'Announcement not found.');
+    if (!isPublicAnnouncement(ann)) {
+      if (!detailAuthentication) return failure(response, 401, 'Please log in to continue.');
+      if (!isClubMember(detailAuthentication.user)) return failure(response, 403, 'You do not have access to this announcement.');
+    }
+    return sendJson(response, 200, publicAnnouncement(ann));
+  }
+
+  if (request.method === 'GET' && pathname === '/api/announcements') {
+    const data = await context.store.read();
+    const announcementAuthentication = await authenticateUser(request, context);
+    const announcements = (data.announcements || [])
+      .filter((announcement) => !announcementAuthentication || belongsToClub(announcement, announcementAuthentication.user))
+      .filter((announcement) => announcementAuthentication && isClubMember(announcementAuthentication.user) ? true : isPublicAnnouncement(announcement))
+      .map(publicAnnouncement);
+    return sendJson(response, 200, announcements);
   }
 
   // Public authentication endpoints (signup, register, login, bootstrap)
@@ -243,44 +381,96 @@ async function handleApi(request, response, url, context) {
   if (!authentication) return;
   const { user, payload } = authentication;
   // Protected authentication and user endpoints
-  if (pathname.startsWith('/api/auth/') || pathname === '/api/users' || pathname.startsWith('/api/users/')) {
+  if (pathname.startsWith('/api/auth/') || pathname === '/api/profile' || pathname === '/api/users' || pathname.startsWith('/api/users/')) {
     const handled = await handleAuthRoutes(request, response, url, { ...context, user, payload });
     if (handled !== false) return handled;
   }
 
-  if (!isClubMember(user)) return failure(response, 403, 'Your role does not have access to private club operations.');
+  if (request.method === 'GET' && pathname === '/api/my-events') {
+    if (!requirePolicy(response, user, [ROLES.WEB_USER], 'Only Web Users can view their RSVP events.')) return;
+    const data = await context.store.read();
+    const confirmedEventIds = new Set((data.rsvps || [])
+      .filter((rsvp) => rsvp.userId === user.id && rsvp.clubId === user.clubId && rsvp.status === 'CONFIRMED')
+      .map((rsvp) => rsvp.eventId));
+    const events = (data.events || [])
+      .filter((event) => event.clubId === user.clubId && event.visibility !== 'private' && confirmedEventIds.has(event.id))
+      .map(publicEvent);
+    return sendJson(response, 200, events);
+  }
+
+  if (request.method === 'POST' && pathname === '/api/announcements') {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot publish announcements.');
+    const input = announcementInput(await readJson(request));
+    const now = new Date().toISOString();
+    const announcement = await context.store.update((data) => {
+      const created = {
+        id: crypto.randomUUID(),
+        ...input,
+        clubId: user.clubId,
+        author: user.name || user.username,
+        authorName: user.name || user.username,
+        sentBy: user.name || user.username,
+        status: input.status || 'PUBLISHED',
+        visibility: input.visibility || 'public',
+        createdAt: now,
+        updatedAt: now,
+        sentAt: now
+      };
+      data.announcements.unshift(created);
+      return created;
+    });
+    return success(response, { announcement: publicAnnouncement(announcement) }, 201);
+  }
+
+  const announcementMatch = pathname.match(/^\/api\/announcements\/([^/]+)$/);
+  if (announcementMatch && ['PATCH', 'DELETE'].includes(request.method)) {
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot manage announcements.');
+    const announcement = await context.store.update(async (data) => {
+      const index = (data.announcements || []).findIndex((candidate) => candidate.id === announcementMatch[1] && belongsToClub(candidate, user));
+      if (index < 0) return null;
+      if (request.method === 'DELETE') return data.announcements.splice(index, 1)[0];
+      const input = announcementInput(await readJson(request), true);
+      data.announcements[index] = { ...data.announcements[index], ...input, updatedAt: new Date().toISOString() };
+      return data.announcements[index];
+    });
+    if (!announcement) return failure(response, 404, 'Announcement not found.');
+    if (request.method === 'DELETE') return success(response, { id: announcement.id });
+    return success(response, { announcement: publicAnnouncement(announcement) });
+  }
+
+  if (!requirePolicy(response, user, 'CLUB_MEMBER', 'Your role does not have access to private club operations.')) return;
 
   if (request.method === 'GET' && pathname === '/api/dashboard/stats') return sendJson(response, 200, await context.dashboard.stats(user));
-  if (request.method === 'GET' && pathname === '/api/dashboard/modules') return sendJson(response, 200, await context.dashboard.modules());
-  if (request.method === 'GET' && pathname === '/api/dashboard/activity') return sendJson(response, 200, await context.dashboard.activity());
-  if (request.method === 'GET' && pathname === '/api/dashboard/charts') return sendJson(response, 200, await context.dashboard.charts());
+  if (request.method === 'GET' && pathname === '/api/dashboard/modules') return sendJson(response, 200, await context.dashboard.modules(user));
+  if (request.method === 'GET' && pathname === '/api/dashboard/activity') return sendJson(response, 200, await context.dashboard.activity(user));
+  if (request.method === 'GET' && pathname === '/api/dashboard/charts') return sendJson(response, 200, await context.dashboard.charts(user));
   if (request.method === 'GET' && pathname === '/api/dashboard/summary') return sendJson(response, 200, await context.dashboard.summary(user));
 
   if (request.method === 'GET' && pathname === '/api/events') {
-    let events = await context.dashboard.events();
+    let events = await context.dashboard.events(user);
     if (url.searchParams.get('status') === 'active') events = events.filter((event) => ['in_progress', 'upcoming'].includes(event.status));
     else if (EVENT_STATUSES.has(url.searchParams.get('status'))) events = events.filter((event) => event.status === url.searchParams.get('status'));
     return sendJson(response, 200, events);
   }
   const budgetMatch = pathname.match(/^\/api\/events\/([^/]+)\/budget$/);
   if (budgetMatch && request.method === 'GET') {
-    if (!requireRole(response, user, [ROLES.PRESIDENT, ROLES.TEAM_LEAD])) return;
-    const { event, budget } = await context.dashboard.budgetForEvent(budgetMatch[1]);
+    if (!requirePolicy(response, user, 'MANAGEMENT')) return;
+    const { event, budget } = await context.dashboard.budgetForEvent(budgetMatch[1], user);
     if (!event) return failure(response, 404, 'Event not found.');
     if (!budget) return failure(response, 404, 'No budget data is available for this event.');
     return sendJson(response, 200, budget);
   }
   const eventMatch = pathname.match(/^\/api\/events\/([^/]+)$/);
   if (eventMatch && request.method === 'GET') {
-    const event = (await context.dashboard.events()).find((candidate) => candidate.id === eventMatch[1]);
+    const event = (await context.dashboard.events(user)).find((candidate) => candidate.id === eventMatch[1]);
     return event ? sendJson(response, 200, event) : failure(response, 404, 'Event not found.');
   }
   if (request.method === 'POST' && pathname === '/api/events') {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot create events.');
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot create events.');
     const input = eventInput(await readJson(request));
     const event = await context.store.update((data) => {
       const now = new Date().toISOString();
-      const created = { id: crypto.randomUUID(), ...input, topMembers: input.topMembers || [], createdBy: user.id, createdAt: now, updatedAt: now };
+      const created = { id: crypto.randomUUID(), ...input, clubId: user.clubId, topMembers: input.topMembers || [], createdBy: user.id, createdAt: now, updatedAt: now };
       data.events.push(created);
       data.activities.push({ id: crypto.randomUUID(), actor: 'user', authorName: user.name || user.username, avatarInitials: user.username.slice(0, 2).toUpperCase(), avatarBg: 'bg-slate-700', text: `created '${created.name}'`, occurredAt: now, eventTag: 'Events', undoable: false });
       return created;
@@ -288,10 +478,10 @@ async function handleApi(request, response, url, context) {
     return success(response, context.dashboard.presentationEvent(event), 201);
   }
   if (eventMatch && ['PATCH', 'PUT'].includes(request.method)) {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot update events.');
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot update events.');
     const input = eventInput(await readJson(request), true);
     const event = await context.store.update((data) => {
-      const index = data.events.findIndex((candidate) => candidate.id === eventMatch[1]);
+      const index = data.events.findIndex((candidate) => candidate.id === eventMatch[1] && belongsToClub(candidate, user));
       if (index < 0) return null;
       data.events[index] = { ...data.events[index], ...input, updatedAt: new Date().toISOString() };
       return data.events[index];
@@ -299,9 +489,9 @@ async function handleApi(request, response, url, context) {
     return event ? success(response, context.dashboard.presentationEvent(event)) : failure(response, 404, 'Event not found.');
   }
   if (eventMatch && request.method === 'DELETE') {
-    if (!isPresident(user)) return failure(response, 403, 'Only President users can delete events.');
+    if (!requirePolicy(response, user, 'PRESIDENT', 'Only President users can delete events.')) return;
     const removed = await context.store.update((data) => {
-      const index = data.events.findIndex((candidate) => candidate.id === eventMatch[1]);
+      const index = data.events.findIndex((candidate) => candidate.id === eventMatch[1] && belongsToClub(candidate, user));
       return index < 0 ? null : data.events.splice(index, 1)[0];
     });
     return removed ? success(response, { id: removed.id }) : failure(response, 404, 'Event not found.');
@@ -309,14 +499,15 @@ async function handleApi(request, response, url, context) {
 
   if (request.method === 'GET' && pathname === '/api/tasks') {
     const data = await context.store.read();
-    const tasks = authorizeRoles(user, ROLES.VOLUNTEER) ? data.tasks.filter((task) => task.assigneeId === user.id) : data.tasks;
+    const clubTasks = scopeCollection(data.tasks, user);
+    const tasks = authorizeRoles(user, ROLES.VOLUNTEER) ? clubTasks.filter((task) => task.assigneeId === user.id) : clubTasks;
     return success(response, { tasks });
   }
   if (request.method === 'POST' && pathname === '/api/tasks') {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot create tasks.');
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot create tasks.');
     const input = taskInput(await readJson(request));
     const created = await context.store.update((data) => {
-      const task = { id: crypto.randomUUID(), ...input, status: input.status || 'todo', assigneeId: input.assigneeId || null, createdBy: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const task = { id: crypto.randomUUID(), ...input, clubId: user.clubId, status: input.status || 'todo', assigneeId: input.assigneeId || null, createdBy: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       data.tasks.push(task);
       return task;
     });
@@ -326,7 +517,7 @@ async function handleApi(request, response, url, context) {
   if (taskMatch && request.method === 'PATCH') {
     const input = taskInput(await readJson(request), true);
     const updated = await context.store.update((data) => {
-      const index = data.tasks.findIndex((task) => task.id === taskMatch[1]);
+      const index = data.tasks.findIndex((task) => task.id === taskMatch[1] && belongsToClub(task, user));
       if (index < 0) return null;
       const current = data.tasks[index];
       if (authorizeRoles(user, ROLES.VOLUNTEER)) {
@@ -340,17 +531,17 @@ async function handleApi(request, response, url, context) {
   }
 
   if (request.method === 'GET' && pathname === '/api/volunteers') {
-    if (!requireRole(response, user, [ROLES.PRESIDENT, ROLES.TEAM_LEAD])) return;
-    return success(response, { volunteers: (await context.store.read()).volunteers });
+    if (!requirePolicy(response, user, 'MANAGEMENT')) return;
+    return success(response, { volunteers: scopeCollection((await context.store.read()).volunteers, user) });
   }
-  if (request.method === 'GET' && pathname === '/api/meetings') return success(response, { meetings: (await context.store.read()).meetings });
+  if (request.method === 'GET' && pathname === '/api/meetings') return success(response, { meetings: scopeCollection((await context.store.read()).meetings, user) });
   if (request.method === 'POST' && pathname === '/api/meetings') {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot create meetings.');
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot create meetings.');
     const input = await readJson(request);
     const title = String(input.title || '').trim();
     if (title.length < 3 || title.length > 160) return failure(response, 422, 'Meeting title must be 3–160 characters.');
     const meeting = await context.store.update((data) => {
-      const created = { id: crypto.randomUUID(), title, occurredAt: input.occurredAt ? new Date(input.occurredAt).toISOString() : new Date().toISOString(), transcript: String(input.transcript || '').slice(0, 50000), createdBy: user.id };
+      const created = { id: crypto.randomUUID(), clubId: user.clubId, title, occurredAt: input.occurredAt ? new Date(input.occurredAt).toISOString() : new Date().toISOString(), transcript: String(input.transcript || '').slice(0, 50000), createdBy: user.id };
       if (Number.isNaN(new Date(created.occurredAt).getTime())) throw error('occurredAt must be a valid date.');
       data.meetings.push(created);
       return created;
@@ -358,7 +549,7 @@ async function handleApi(request, response, url, context) {
     return success(response, { meeting }, 201);
   }
   if (request.method === 'POST' && pathname === '/api/tasks/bulk') {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot create tasks.');
+    if (!canManageClub(user)) return failure(response, 403, 'Your role cannot create tasks.');
     const input = await readJson(request);
     const rawTasks = Array.isArray(input.tasks) ? input.tasks : (Array.isArray(input) ? input : []);
     if (!rawTasks.length) return failure(response, 422, 'Tasks array cannot be empty.');
@@ -369,6 +560,7 @@ async function handleApi(request, response, url, context) {
         const parsed = taskInput(item);
         const task = {
           id: crypto.randomUUID(),
+          clubId: user.clubId,
           ...parsed,
           status: parsed.status || 'todo',
           source: parsed.source || 'ai_plan',
@@ -388,6 +580,9 @@ async function handleApi(request, response, url, context) {
   if (request.method === 'POST' && meetingProcessMatch) {
     const meetingId = meetingProcessMatch[1];
     const input = await readJson(request);
+    const meetingData = await context.store.read();
+    const meeting = (meetingData.meetings || []).find((candidate) => candidate.id === meetingId);
+    if (!requireClubResource(response, user, meeting)) return;
     const result = await context.aiOrchestrator.meetingService.processMeeting({
       ...input,
       meetingId,
@@ -396,31 +591,25 @@ async function handleApi(request, response, url, context) {
     return sendJson(response, 200, result);
   }
 
-  if (request.method === 'GET' && pathname === '/api/announcements') return success(response, { announcements: (await context.store.read()).announcements });
-
-  if (request.method === 'POST' && pathname === '/api/announcements') {
-    if (!canManageEvents(user)) return failure(response, 403, 'Your role cannot publish announcements.');
-    const input = await readJson(request);
-    const title = String(input.title || '').trim();
-    const content = String(input.content || '').trim();
-    if (!title || !content || title.length > 160 || content.length > 5000) return failure(response, 422, 'A valid announcement title and content are required.');
-    const announcement = await context.store.update((data) => {
-      const created = { id: crypto.randomUUID(), title, content, audience: String(input.audience || 'Club members').slice(0, 100), sentAt: new Date().toISOString(), createdBy: user.id };
-      data.announcements.unshift(created);
-      return created;
-    });
-    return success(response, { announcement }, 201);
+  if (request.method === 'GET' && pathname === '/api/documents') {
+    if (!requirePolicy(response, user, 'MANAGEMENT')) return;
+    return success(response, { documents: scopeCollection((await context.store.read()).documents, user).map(({ content, ...document }) => document) });
   }
-  if (request.method === 'GET' && pathname === '/api/documents') return success(response, { documents: (await context.store.read()).documents.map(({ content, ...document }) => document) });
-  if (request.method === 'GET' && pathname === '/api/risks') return success(response, { risks: (await context.store.read()).risks });
+  if (request.method === 'GET' && pathname === '/api/risks') {
+    if (!requirePolicy(response, user, 'MANAGEMENT')) return;
+    return success(response, { risks: scopeCollection((await context.store.read()).risks, user) });
+  }
   if (pathname === '/api/club/settings') {
-    if (!requireRole(response, user, [ROLES.PRESIDENT])) return;
-    if (request.method === 'GET') return success(response, { settings: (await context.store.read()).settings });
+    if (!requirePolicy(response, user, 'PRESIDENT')) return;
+    if (request.method === 'GET') {
+      const data = await context.store.read();
+      return success(response, { settings: data.settings[user.clubId] || {} });
+    }
     if (['PUT', 'PATCH'].includes(request.method)) {
       const input = await readJson(request);
       const settings = await context.store.update((data) => {
-        data.settings = { ...data.settings, ...input, updatedAt: new Date().toISOString(), updatedBy: user.id };
-        return data.settings;
+        data.settings[user.clubId] = { ...(data.settings[user.clubId] || {}), ...input, updatedAt: new Date().toISOString(), updatedBy: user.id };
+        return data.settings[user.clubId];
       });
       return success(response, { settings });
     }

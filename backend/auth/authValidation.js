@@ -1,4 +1,5 @@
 const { ROLES, ACCOUNT_STATUSES, normalizeRole, normalizeStatus } = require('./roles');
+const { normalizeClubId } = require('../models/Club');
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,40}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,6 +48,33 @@ function validateLogin(input) {
   return { identifier, password };
 }
 
+function validateProfileUpdate(input) {
+  const forbiddenFields = ['role', 'clubId', 'password', 'username', 'status'];
+  if (forbiddenFields.some((field) => Object.prototype.hasOwnProperty.call(input, field))) {
+    throw clientError('Profile updates cannot change account access or identity fields.', 403);
+  }
+
+  const name = String(input.name || '').trim();
+  const email = String(input.email || '').trim().toLowerCase();
+  if (name.length < 2 || name.length > 100) throw clientError('Name must be between 2 and 100 characters.');
+  if (!EMAIL_PATTERN.test(email) || email.length > 254) throw clientError('Please provide a valid email address.');
+
+  let avatar = null;
+  if (input.avatar !== undefined && input.avatar !== null && input.avatar !== '') {
+    avatar = String(input.avatar).trim();
+    if (avatar.length > 2_000_000 || !/^(https?:\/\/|data:image\/)/i.test(avatar)) {
+      throw clientError('Profile picture must be a valid image URL or image data.');
+    }
+  }
+  return { name, email, avatar };
+}
+
+function validateClubId(input) {
+  const clubId = normalizeClubId(input);
+  if (!clubId) throw clientError('Please provide a valid Club ID.');
+  return clubId;
+}
+
 function validateRoleChange(input) {
   const role = normalizeRole(input.role);
   if (!role) throw clientError('Please select a valid role.');
@@ -64,6 +92,8 @@ module.exports = {
   validateIdentity,
   validateRegistration,
   validateLogin,
+  validateProfileUpdate,
+  validateClubId,
   validateRoleChange,
   validateStatusChange
 };

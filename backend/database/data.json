@@ -1,0 +1,1190 @@
+{
+  "version": 1,
+  "users": [
+    {
+      "id": "usr-president-1",
+      "name": "Jenish Patel",
+      "username": "admin",
+      "email": "admin@planova.test",
+      "role": "PRESIDENT",
+      "status": "ACTIVE",
+      "passwordHash": "scrypt$16384$8$1$I5H9r_BOMnTuP5bL1HmvuQ$SdXF1WEkcSTIyqRg2je3CaGJKBnwwcuSGJHV0goHOrrg0VfySSds0RFTeaUK27U7cDizMEi4gy_FnH5Va7iEaA",
+      "createdAt": "2026-09-19T10:35:43.356Z",
+      "updatedAt": "2026-09-19T10:35:43.356Z"
+    },
+    {
+      "id": "usr-coord-1",
+      "name": "Dev Malik",
+      "username": "coordinator",
+      "email": "coordinator@planova.test",
+      "role": "TEAM_LEAD",
+      "status": "ACTIVE",
+      "passwordHash": "scrypt$16384$8$1$I5H9r_BOMnTuP5bL1HmvuQ$SdXF1WEkcSTIyqRg2je3CaGJKBnwwcuSGJHV0goHOrrg0VfySSds0RFTeaUK27U7cDizMEi4gy_FnH5Va7iEaA",
+      "createdAt": "2026-09-19T10:35:43.356Z",
+      "updatedAt": "2026-09-19T10:35:43.356Z"
+    },
+    {
+      "id": "usr-vol-1",
+      "name": "Priya Patel",
+      "username": "volunteer",
+      "email": "volunteer@planova.test",
+      "role": "VOLUNTEER",
+      "status": "ACTIVE",
+      "passwordHash": "scrypt$16384$8$1$I5H9r_BOMnTuP5bL1HmvuQ$SdXF1WEkcSTIyqRg2je3CaGJKBnwwcuSGJHV0goHOrrg0VfySSds0RFTeaUK27U7cDizMEi4gy_FnH5Va7iEaA",
+      "createdAt": "2026-09-19T10:35:43.356Z",
+      "updatedAt": "2026-09-19T10:35:43.356Z"
+    },
+    {
+      "id": "usr-web-1",
+      "name": "Alex Green",
+      "username": "user",
+      "email": "user@planova.test",
+      "role": "WEB_USER",
+      "status": "ACTIVE",
+      "passwordHash": "scrypt$16384$8$1$I5H9r_BOMnTuP5bL1HmvuQ$SdXF1WEkcSTIyqRg2je3CaGJKBnwwcuSGJHV0goHOrrg0VfySSds0RFTeaUK27U7cDizMEi4gy_FnH5Va7iEaA",
+      "createdAt": "2026-09-19T10:35:43.356Z",
+      "updatedAt": "2026-09-19T10:35:43.356Z"
+    },
+    {
+      "id": "usr-susp-1",
+      "name": "Banned Account",
+      "username": "suspended",
+      "email": "suspended@planova.test",
+      "role": "WEB_USER",
+      "status": "SUSPENDED",
+      "passwordHash": "scrypt$16384$8$1$I5H9r_BOMnTuP5bL1HmvuQ$SdXF1WEkcSTIyqRg2je3CaGJKBnwwcuSGJHV0goHOrrg0VfySSds0RFTeaUK27U7cDizMEi4gy_FnH5Va7iEaA",
+      "createdAt": "2026-09-19T10:35:43.356Z",
+      "updatedAt": "2026-09-19T10:35:43.356Z"
+    },
+    {
+      "id": "aac480aa-4285-4a0b-9806-98f5ad4b175d",
+      "email": "u@test.com",
+      "username": "tester",
+      "role": "Admin",
+      "passwordHash": "Az9GOZ3tRnyUI4xN56ZZ7w:9q4x7HMu0pQ9PltQAU7q55v4_CA91sQgC_JSrSyh7JxFSWIHEQmDWgxoT-Z7ewNNIpAxktzeRjgtrtDQw3ZtaA",
+      "createdAt": "2026-09-19T07:36:26.095Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-technova",
+      "name": "TechNova Hackathon 2026",
+      "type": "Hackathon",
+      "eventDate": "2026-10-01T04:30:00.000Z",
+      "percentComplete": 68,
+      "phase": "Logistics",
+      "riskLevel": "critical",
+      "riskSummary": "Auditorium AC permission pending",
+      "status": "in_progress",
+      "expectedAttendance": 500,
+      "budgetPlanned": 12000,
+      "venue": "Central Auditorium",
+      "topMembers": [
+        {
+          "name": "Priya Patel",
+          "initials": "PP",
+          "bg": "bg-emerald-600"
+        },
+        {
+          "name": "Arjun Rao",
+          "initials": "AR",
+          "bg": "bg-slate-800"
+        },
+        {
+          "name": "Neha Sharma",
+          "initials": "NS",
+          "bg": "bg-zinc-700"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    },
+    {
+      "id": "evt-roboquest",
+      "name": "RoboQuest Championship",
+      "type": "Competition",
+      "eventDate": "2026-10-13T04:30:00.000Z",
+      "percentComplete": 45,
+      "phase": "Promotion",
+      "riskLevel": "medium",
+      "riskSummary": "Sponsorship confirmation delayed",
+      "status": "in_progress",
+      "expectedAttendance": 450,
+      "budgetPlanned": 9000,
+      "venue": "Indoor Sports Complex Arena",
+      "topMembers": [
+        {
+          "name": "Dev Malik",
+          "initials": "DM",
+          "bg": "bg-cyan-700"
+        },
+        {
+          "name": "Kavya Sen",
+          "initials": "KS",
+          "bg": "bg-amber-600"
+        },
+        {
+          "name": "Rohan Jha",
+          "initials": "RJ",
+          "bg": "bg-rose-600"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    },
+    {
+      "id": "evt-mixer",
+      "name": "Alumni Mentorship Mixer",
+      "type": "Networking",
+      "eventDate": "2026-10-27T04:30:00.000Z",
+      "percentComplete": 20,
+      "phase": "Approvals",
+      "riskLevel": "low",
+      "riskSummary": "Guest speaker invites sent",
+      "status": "upcoming",
+      "expectedAttendance": 120,
+      "budgetPlanned": 5000,
+      "venue": "Faculty Lounge & Courtyard",
+      "topMembers": [
+        {
+          "name": "Tanvi G",
+          "initials": "TG",
+          "bg": "bg-slate-700"
+        },
+        {
+          "name": "Siddharth V",
+          "initials": "SV",
+          "bg": "bg-slate-900"
+        },
+        {
+          "name": "Ananya M",
+          "initials": "AM",
+          "bg": "bg-teal-700"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    },
+    {
+      "id": "evt-designsprint",
+      "name": "DesignSprint UI Workshop",
+      "type": "Workshop",
+      "eventDate": "2026-09-12T04:30:00.000Z",
+      "percentComplete": 100,
+      "phase": "Execution",
+      "riskLevel": "low",
+      "riskSummary": "All milestones completed",
+      "status": "completed",
+      "expectedAttendance": 80,
+      "budgetPlanned": 3500,
+      "actualSpent": 3250,
+      "venue": "Design Lab 4B",
+      "topMembers": [
+        {
+          "name": "Aarav Shah",
+          "initials": "AS",
+          "bg": "bg-slate-800"
+        },
+        {
+          "name": "Sneha Roy",
+          "initials": "SR",
+          "bg": "bg-zinc-700"
+        },
+        {
+          "name": "Karan Mehta",
+          "initials": "KM",
+          "bg": "bg-slate-900"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    },
+    {
+      "id": "evt-technova-2025",
+      "name": "TechNova Hackathon 2025",
+      "type": "Hackathon",
+      "eventDate": "2025-09-19T04:30:00.000Z",
+      "percentComplete": 100,
+      "phase": "Execution",
+      "riskLevel": "low",
+      "riskSummary": "Archived after successful run",
+      "status": "completed",
+      "expectedAttendance": 480,
+      "actualAttendance": 512,
+      "budgetPlanned": 11000,
+      "actualSpent": 11850,
+      "venue": "Central Auditorium",
+      "topMembers": [
+        {
+          "name": "Priya Patel",
+          "initials": "PP",
+          "bg": "bg-emerald-600"
+        },
+        {
+          "name": "Arjun Rao",
+          "initials": "AR",
+          "bg": "bg-slate-800"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    },
+    {
+      "id": "evt-roboquest-2025",
+      "name": "RoboQuest 2025",
+      "type": "Competition",
+      "eventDate": "2025-11-23T04:30:00.000Z",
+      "percentComplete": 100,
+      "phase": "Execution",
+      "riskLevel": "low",
+      "riskSummary": "Archived post-competition",
+      "status": "completed",
+      "expectedAttendance": 400,
+      "actualAttendance": 425,
+      "budgetPlanned": 8500,
+      "actualSpent": 9100,
+      "venue": "Indoor Sports Complex Arena",
+      "topMembers": [
+        {
+          "name": "Dev Malik",
+          "initials": "DM",
+          "bg": "bg-cyan-700"
+        },
+        {
+          "name": "Kavya Sen",
+          "initials": "KS",
+          "bg": "bg-amber-600"
+        }
+      ],
+      "createdAt": "2026-09-19T08:16:33.875Z",
+      "updatedAt": "2026-09-19T08:16:33.875Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-done-1",
+      "title": "Completed task 1",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-2",
+      "title": "Completed task 2",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-3",
+      "title": "Completed task 3",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-4",
+      "title": "Completed task 4",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-5",
+      "title": "Completed task 5",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-6",
+      "title": "Completed task 6",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-7",
+      "title": "Completed task 7",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-8",
+      "title": "Completed task 8",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-9",
+      "title": "Completed task 9",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-10",
+      "title": "Completed task 10",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-11",
+      "title": "Completed task 11",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-12",
+      "title": "Completed task 12",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-13",
+      "title": "Completed task 13",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-14",
+      "title": "Completed task 14",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-15",
+      "title": "Completed task 15",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-16",
+      "title": "Completed task 16",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-17",
+      "title": "Completed task 17",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-18",
+      "title": "Completed task 18",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-19",
+      "title": "Completed task 19",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-20",
+      "title": "Completed task 20",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-21",
+      "title": "Completed task 21",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-22",
+      "title": "Completed task 22",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-23",
+      "title": "Completed task 23",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-24",
+      "title": "Completed task 24",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-25",
+      "title": "Completed task 25",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-26",
+      "title": "Completed task 26",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-27",
+      "title": "Completed task 27",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-28",
+      "title": "Completed task 28",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-29",
+      "title": "Completed task 29",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-30",
+      "title": "Completed task 30",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-31",
+      "title": "Completed task 31",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-32",
+      "title": "Completed task 32",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-33",
+      "title": "Completed task 33",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-34",
+      "title": "Completed task 34",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-35",
+      "title": "Completed task 35",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-36",
+      "title": "Completed task 36",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-37",
+      "title": "Completed task 37",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 4,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-38",
+      "title": "Completed task 38",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 5,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-39",
+      "title": "Completed task 39",
+      "category": "Technical",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 6,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-40",
+      "title": "Completed task 40",
+      "category": "Logistics",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 7,
+      "assigneeId": null
+    },
+    {
+      "id": "task-done-41",
+      "title": "Completed task 41",
+      "category": "Design",
+      "status": "done",
+      "dueDate": "2026-09-18T04:30:00.000Z",
+      "completionDays": 3,
+      "assigneeId": null
+    },
+    {
+      "id": "task-doing-1",
+      "title": "In-progress task 1",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-20T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-2",
+      "title": "In-progress task 2",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-21T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-3",
+      "title": "In-progress task 3",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-22T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-4",
+      "title": "In-progress task 4",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-23T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-5",
+      "title": "In-progress task 5",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-24T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-6",
+      "title": "In-progress task 6",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-25T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-7",
+      "title": "In-progress task 7",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-26T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-8",
+      "title": "In-progress task 8",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-20T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-9",
+      "title": "In-progress task 9",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-21T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-10",
+      "title": "In-progress task 10",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-22T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-11",
+      "title": "In-progress task 11",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-23T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-12",
+      "title": "In-progress task 12",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-24T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-doing-13",
+      "title": "In-progress task 13",
+      "category": "Logistics",
+      "status": "doing",
+      "dueDate": "2026-09-25T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-doing-14",
+      "title": "In-progress task 14",
+      "category": "Marketing",
+      "status": "doing",
+      "dueDate": "2026-09-26T04:30:00.000Z",
+      "assigneeId": "vol-2"
+    },
+    {
+      "id": "task-review-1",
+      "title": "Review task 1",
+      "category": "Sponsorship",
+      "status": "review",
+      "dueDate": "2026-09-20T04:30:00.000Z",
+      "assigneeId": "vol-3"
+    },
+    {
+      "id": "task-review-2",
+      "title": "Review task 2",
+      "category": "Sponsorship",
+      "status": "review",
+      "dueDate": "2026-09-21T04:30:00.000Z",
+      "assigneeId": "vol-3"
+    },
+    {
+      "id": "task-review-3",
+      "title": "Review task 3",
+      "category": "Sponsorship",
+      "status": "review",
+      "dueDate": "2026-09-22T04:30:00.000Z",
+      "assigneeId": "vol-3"
+    },
+    {
+      "id": "task-review-4",
+      "title": "Review task 4",
+      "category": "Sponsorship",
+      "status": "review",
+      "dueDate": "2026-09-23T04:30:00.000Z",
+      "assigneeId": "vol-3"
+    },
+    {
+      "id": "task-review-5",
+      "title": "Review task 5",
+      "category": "Sponsorship",
+      "status": "review",
+      "dueDate": "2026-09-24T04:30:00.000Z",
+      "assigneeId": "vol-3"
+    },
+    {
+      "id": "task-blocked-1",
+      "title": "Blocked task 1",
+      "category": "Permissions",
+      "status": "blocked",
+      "dueDate": "2026-09-17T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-blocked-2",
+      "title": "Blocked task 2",
+      "category": "Permissions",
+      "status": "blocked",
+      "dueDate": "2026-09-17T04:30:00.000Z",
+      "assigneeId": "vol-1"
+    },
+    {
+      "id": "task-todo-1",
+      "title": "To-do task 1",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-20T04:30:00.000Z",
+      "assigneeId": null
+    },
+    {
+      "id": "task-todo-2",
+      "title": "To-do task 2",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-21T04:30:00.000Z",
+      "assigneeId": null
+    },
+    {
+      "id": "task-todo-3",
+      "title": "To-do task 3",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-22T04:30:00.000Z",
+      "assigneeId": null
+    },
+    {
+      "id": "task-todo-4",
+      "title": "To-do task 4",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-23T04:30:00.000Z",
+      "assigneeId": null
+    },
+    {
+      "id": "task-todo-5",
+      "title": "To-do task 5",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-24T04:30:00.000Z",
+      "assigneeId": null
+    },
+    {
+      "id": "task-todo-6",
+      "title": "To-do task 6",
+      "category": "Operations",
+      "status": "todo",
+      "dueDate": "2026-09-25T04:30:00.000Z",
+      "assigneeId": null
+    }
+  ],
+  "risks": [
+    {
+      "id": "risk-1",
+      "title": "Auditorium permission pending",
+      "severity": "Critical",
+      "status": "open",
+      "likelihood": "High",
+      "mitigation": "Submit dean escalation letter and request expedited Dean approval"
+    },
+    {
+      "id": "risk-2",
+      "title": "Sponsorship confirmation delayed",
+      "severity": "High",
+      "status": "open",
+      "likelihood": "High",
+      "mitigation": "Follow up with tier-2 sponsors and provide 10% early bird booth discount"
+    },
+    {
+      "id": "risk-3",
+      "title": "Volunteer availability conflict",
+      "severity": "High",
+      "status": "open",
+      "likelihood": "Medium",
+      "mitigation": "Redistribute workload from overloaded volunteers to new batch recruits"
+    },
+    {
+      "id": "risk-4",
+      "title": "Vendor response time",
+      "severity": "Medium",
+      "status": "open",
+      "likelihood": "Medium",
+      "mitigation": "Secure backup AV equipment rental vendor"
+    },
+    {
+      "id": "risk-5",
+      "title": "Backup power check",
+      "severity": "Medium",
+      "status": "open",
+      "likelihood": "Low",
+      "mitigation": "Coordinate with campus electrical team 5 days prior"
+    },
+    {
+      "id": "risk-6",
+      "title": "Signage draft review",
+      "severity": "Medium",
+      "status": "open",
+      "likelihood": "Low",
+      "mitigation": "Finalize banner and stage backdrop prints 7 days before execution"
+    },
+    {
+      "id": "risk-7",
+      "title": "Speaker travel timing",
+      "severity": "Medium",
+      "status": "open",
+      "likelihood": "Medium",
+      "mitigation": "Assign a volunteer escort for airport pickup and hospitality"
+    },
+    {
+      "id": "risk-8",
+      "title": "Refreshment estimates",
+      "severity": "Low",
+      "status": "open",
+      "likelihood": "Low",
+      "mitigation": "Lock attendee head-count 48 hours before catering delivery"
+    }
+  ],
+  "volunteers": [
+    {
+      "id": "vol-1",
+      "name": "Priya P.",
+      "email": "priya@campus.edu",
+      "activeTasks": 8,
+      "skills": [
+        "Stage Management",
+        "Logistics",
+        "Speaker Coordination"
+      ],
+      "availability": [
+        "Saturday morning",
+        "Sunday all day"
+      ],
+      "department": "Computer Science",
+      "experienceEvents": 4
+    },
+    {
+      "id": "vol-2",
+      "name": "Arjun R.",
+      "email": "arjun@campus.edu",
+      "activeTasks": 7,
+      "skills": [
+        "Sponsorship",
+        "Finance",
+        "Budgeting"
+      ],
+      "availability": [
+        "Friday afternoon",
+        "Saturday all day"
+      ],
+      "department": "Electrical Engineering",
+      "experienceEvents": 3
+    },
+    {
+      "id": "vol-3",
+      "name": "Dev M.",
+      "email": "dev@campus.edu",
+      "activeTasks": 5,
+      "skills": [
+        "Technical Setup",
+        "Arena Planning",
+        "Hardware"
+      ],
+      "availability": [
+        "Saturday morning",
+        "Saturday evening"
+      ],
+      "department": "Mechanical Engineering",
+      "experienceEvents": 2
+    },
+    {
+      "id": "vol-4",
+      "name": "Neha S.",
+      "email": "neha@campus.edu",
+      "activeTasks": 4,
+      "skills": [
+        "Poster Design",
+        "Social Media",
+        "Marketing"
+      ],
+      "availability": [
+        "Weekdays flexible",
+        "Saturday morning"
+      ],
+      "department": "Design",
+      "experienceEvents": 2
+    },
+    {
+      "id": "vol-5",
+      "name": "Kavya S.",
+      "email": "kavya@campus.edu",
+      "activeTasks": 3,
+      "skills": [
+        "Registration",
+        "Hospitality",
+        "Volunteer Coordination"
+      ],
+      "availability": [
+        "Saturday morning",
+        "Sunday all day"
+      ],
+      "department": "Biotech",
+      "experienceEvents": 1
+    },
+    {
+      "id": "vol-6",
+      "name": "Tanvi G.",
+      "email": "tanvi@campus.edu",
+      "activeTasks": 2,
+      "skills": [
+        "Stage Setup",
+        "Sound Check",
+        "Logistics"
+      ],
+      "availability": [
+        "Saturday morning",
+        "Sunday afternoon"
+      ],
+      "department": "Civil Engineering",
+      "experienceEvents": 1
+    },
+    {
+      "id": "vol-7",
+      "name": "Aman K.",
+      "email": "aman@campus.edu",
+      "activeTasks": 1,
+      "skills": [
+        "Stage Management",
+        "Logistics",
+        "Registration"
+      ],
+      "availability": [
+        "Saturday morning",
+        "Saturday afternoon",
+        "Sunday all day"
+      ],
+      "department": "Computer Science",
+      "experienceEvents": 1
+    },
+    {
+      "id": "vol-8",
+      "name": "Rahul V.",
+      "email": "rahul@campus.edu",
+      "activeTasks": 9,
+      "skills": [
+        "Technical Setup",
+        "AV",
+        "Logistics"
+      ],
+      "availability": [
+        "Saturday all day"
+      ],
+      "department": "Electrical Engineering",
+      "experienceEvents": 3
+    }
+  ],
+  "meetings": [
+    {
+      "id": "meeting-1",
+      "title": "Core Sync",
+      "occurredAt": "2026-09-17T04:30:00.000Z",
+      "minutesLogged": true,
+      "transcript": "Priya: We need to submit the central auditorium permission letter by tomorrow morning. Arjun: I will confirm the title sponsorship deal with DevRel sponsors by Thursday. Dev: I have checked the arena power outlets for RoboQuest."
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc-1",
+      "name": "TechNova_2025_PostMortem.md",
+      "title": "TechNova 2025 Post-Mortem & Budget Report",
+      "status": "ready",
+      "content": "TechNova 2025 Post-Mortem & Financial Summary:\n- Total registered participants: 512 across 48 teams.\n- Overall Budget: Planned $11,000, Actual Spent $11,850.\n- Sound and stage setup incurred an overrun of $650 due to late acoustic adjustments in Central Auditorium. We spent $2,800 on sound and audio-visual engineering last year.\n- Permission Delays: The Central Auditorium AC permission letter was submitted only 7 days before the event, resulting in a near-cancellation. Recommendation for future events: Submit venue permissions at least 14 days in advance.\n- Sponsorship: Successfully raised $7,500 from 4 tech partners.\n- Key delayed tasks: Stage Banner Printing (delayed 3 days), Catering Confirmation (delayed 2 days).\n- Registration team handled 500+ check-ins within 45 minutes using digital QR wristbands."
+    },
+    {
+      "id": "doc-2",
+      "name": "Venue_Permissions_Guidelines.pdf",
+      "title": "Campus Central Auditorium Permission SOP",
+      "status": "ready",
+      "content": "Standard Operating Procedure for Venue & Facilities Permissions:\n1. All club events in the Central Auditorium require written approval from the Dean of Student Affairs and the Estate Office.\n2. Applications must be submitted at least 14 calendar days prior to the event date.\n3. Air Conditioning and backup diesel generator permissions must be specifically requested on Form 4B.\n4. Late submissions (less than 10 days) risk being rejected or subjected to emergency surcharge fees.\n5. Sound checks are strictly restricted to between 6:00 PM and 9:00 PM on the day preceding the event."
+    },
+    {
+      "id": "doc-3",
+      "name": "RoboQuest_2025_Summary.md",
+      "title": "RoboQuest 2025 Arena & Sponsorship Review",
+      "status": "ready",
+      "content": "RoboQuest 2025 Operations Summary:\n- Total participating robots: 64 across 3 weight categories.\n- Budget: Planned $8,500, Spent $9,100.\n- High-expense categories: Arena perimeter polycarbonate barriers ($3,200) and prize pool ($3,500).\n- Key Risk Encountered: Arena power tripping during semifinal match 4 due to insufficient dedicated 15A circuits. Mitigation: Always test dedicated 3-phase line 48 hours prior.\n- Sponsorship confirmation delayed by 12 days, forcing the club to use emergency contingency funds for arena plywood."
+    },
+    {
+      "id": "doc-4",
+      "name": "Volunteer_Roster_Guidelines.xlsx",
+      "title": "IEEE Student Branch Volunteer Workload & Role Guidelines",
+      "status": "ready",
+      "content": "IEEE Club Operations — Volunteer Allocation Policy:\n- Maximum healthy active task load per volunteer is 6 tasks. Volunteers with >6 tasks are marked as Overloaded.\n- Rebalancing protocol: When assigning new critical tasks, check active workloads. Reassign tasks from volunteers with >=7 tasks to available volunteers with <=3 tasks.\n- Roles: Stage Management requires prior shadowing experience; Sponsorship requires finance coordinator sign-off."
+    }
+  ],
+  "announcements": [
+    {
+      "id": "ann-1",
+      "title": "Registration open",
+      "sentAt": "2026-09-18T04:30:00.000Z",
+      "audience": "All Students",
+      "content": "Registrations for TechNova 2026 are officially live!"
+    }
+  ],
+  "activities": [
+    {
+      "id": "act-1",
+      "actor": "user",
+      "authorName": "Priya Patel",
+      "avatarInitials": "PP",
+      "avatarBg": "bg-emerald-600",
+      "text": "moved 'Poster design' to Done",
+      "occurredAt": "2026-09-19T03:30:00.000Z",
+      "eventTag": "TechNova 2026",
+      "undoable": false
+    },
+    {
+      "id": "act-2",
+      "actor": "ai",
+      "authorName": "Planova AI",
+      "text": "created 9 tasks from 'Core Sync' meeting notes",
+      "occurredAt": "2026-09-18T04:30:00.000Z",
+      "eventTag": "Auto-Tasked",
+      "undoable": true
+    },
+    {
+      "id": "act-3",
+      "actor": "ai",
+      "authorName": "Planova AI",
+      "text": "raised a risk: permission letter pending for Central Auditorium",
+      "occurredAt": "2026-09-18T04:30:00.000Z",
+      "eventTag": "Risk Detection",
+      "undoable": true
+    }
+  ],
+  "budgets": [
+    {
+      "eventId": "evt-technova",
+      "event": "TechNova Hackathon 2026",
+      "totalPlanned": 12000,
+      "committed": 4500,
+      "spent": 3200,
+      "sponsorshipReceived": 8000,
+      "currency": "$"
+    },
+    {
+      "eventId": "evt-roboquest",
+      "event": "RoboQuest Championship",
+      "totalPlanned": 9000,
+      "committed": 3100,
+      "spent": 1850,
+      "sponsorshipReceived": 5000,
+      "currency": "$"
+    },
+    {
+      "eventId": "evt-mixer",
+      "event": "Alumni Mentorship Mixer",
+      "totalPlanned": 5000,
+      "committed": 900,
+      "spent": 350,
+      "sponsorshipReceived": 2500,
+      "currency": "$"
+    },
+    {
+      "eventId": "evt-designsprint",
+      "event": "DesignSprint UI Workshop",
+      "totalPlanned": 3500,
+      "committed": 3500,
+      "spent": 3250,
+      "sponsorshipReceived": 3500,
+      "currency": "$"
+    },
+    {
+      "eventId": "evt-technova-2025",
+      "event": "TechNova Hackathon 2025",
+      "totalPlanned": 11000,
+      "committed": 11850,
+      "spent": 11850,
+      "sponsorshipReceived": 7500,
+      "currency": "$"
+    },
+    {
+      "eventId": "evt-roboquest-2025",
+      "event": "RoboQuest 2025",
+      "totalPlanned": 8500,
+      "committed": 9100,
+      "spent": 9100,
+      "sponsorshipReceived": 6000,
+      "currency": "$"
+    }
+  ],
+  "aiActions": []
+}

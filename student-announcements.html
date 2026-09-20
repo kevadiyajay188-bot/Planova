@@ -207,246 +207,11 @@
       return d.toISOString();
     }
 
-    const INITIAL_FEATURED = [
-      {
-        id: 'ann-technova-2026',
-        title: 'TechNova Hackathon 2026: Applications Now Open!',
-        clubName: 'IEEE Student Branch',
-        collegeName: 'National Institute of Technology',
-        category: 'Hackathon',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80',
-        scale: 'national',
-        venue: 'Central Auditorium, Tech Campus',
-        eventDate: daysFromNow(12, 9),
-        registrationUrl: 'https://technova.campus.edu/register'
-      },
-      {
-        id: 'ann-kalakriti-2026',
-        title: 'Kalakriti Annual Cultural Gala & Stage Revelry',
-        clubName: 'Fine Arts & Drama Society',
-        collegeName: 'Metropolitan University',
-        category: 'Cultural',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1400&q=80',
-        scale: 'state',
-        venue: 'Open Air Amphitheatre',
-        eventDate: daysFromNow(18, 17),
-        registrationUrl: 'https://kalakriti.metro.edu/entry'
-      },
-      {
-        id: 'ann-futsal-2026',
-        title: 'Inter-University Futsal & Athletics League 2026',
-        clubName: 'Campus Athletics Board',
-        collegeName: 'State Sports Academy',
-        category: 'Sports',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1400&q=80',
-        scale: 'national',
-        venue: 'University Sports Complex, Pitch 1',
-        eventDate: daysFromNow(8, 16),
-        registrationUrl: 'https://athletics.sports.edu/fixtures'
-      },
-      {
-        id: 'ann-roboquest-2026',
-        title: 'RoboQuest Championship: Arena Combat Finalists Announced',
-        clubName: 'Robotics & Automation Society',
-        collegeName: 'Apex Institute of Engineering',
-        category: 'Technical',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1400&q=80',
-        scale: 'state',
-        venue: 'Indoor Sports Complex Arena',
-        eventDate: daysFromNow(24, 10),
-        registrationUrl: 'https://roboquest.apex.edu/tickets'
-      }
-    ];
+    const INITIAL_FEATURED = [];
 
-    const RECENT_NOTICES = [
-      {
-        id: 'notice-wifi',
-        title: 'Wi-Fi Maintenance Notice',
-        date: '2026-10-10',
-        eventName: 'TechNova Hackathon 2026',
-        category: 'Hackathon',
-        message: 'Please note that campus Wi-Fi will undergo maintenance during the TechNova Hackathon. We are setting up dedicated secondary routers in the Central Auditorium, so internet access will not be interrupted for participants.'
-      },
-      {
-        id: 'notice-reg',
-        title: 'Registration Closing Soon',
-        date: '2026-10-20',
-        eventName: 'RoboQuest 2026',
-        category: 'Technical',
-        message: 'Registrations for RoboQuest 2026 will close in exactly 48 hours. Please ensure your team members have all RSVP\'d using their university email addresses. No on-the-spot registrations will be accepted.'
-      },
-      {
-        id: 'notice-sprint',
-        title: 'Design Sprint Pre-requisites',
-        date: '2026-10-06',
-        eventName: 'UI/UX Design Sprint',
-        category: 'Workshop',
-        message: 'All participants must have Figma installed and an account created before attending the sprint. Please bring a mouse and your laptop charger.'
-      }
-    ];
+    const RECENT_NOTICES = [];
 
-    const INITIAL_FEED = [
-      {
-        id: 'ann-technova-2026',
-        eventId: 'evt-technova',
-        title: 'TechNova Hackathon 2026',
-        clubName: 'IEEE Student Branch',
-        collegeName: 'National Institute of Technology',
-        category: 'Hackathon',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
-        preview: 'A 36-hour open hackathon for students across all branches. Build, prototype, and pitch your idea to industry judges. Prizes worth ₹1,50,000.',
-        body: 'TechNova 2026 registration is officially live! Planova’s flagship 36-hour hackathon brings together student developers, designers, and innovators from across 40+ colleges.\n\nTracks include Generative AI Systems, Decentralized Apps, IoT & Hardware, and Social Impact Tech. Mentors from top engineering teams will be on-site 24/7, with hardware kits, cloud computing credits, and meals provided throughout the event. Form teams of 2 to 4 students. Limited seats available — RSVP early to guarantee your participation kit.',
-        venue: 'Central Auditorium, Block A',
-        eventDate: daysFromNow(12, 9),
-        postedAt: daysFromNow(-1, 14),
-        saved: false,
-        scale: 'national',
-        featured: true,
-        isMyClub: true,
-        registrationUrl: 'https://technova.campus.edu/register'
-      },
-      {
-        id: 'ann-roboquest-2026',
-        eventId: 'evt-roboquest',
-        title: 'RoboQuest 2026 Championship',
-        clubName: 'Robotics & Automation Society',
-        collegeName: 'Apex Institute of Engineering',
-        category: 'Technical',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
-        preview: 'Annual robotics competition featuring line-follower, maze-solver, and autonomous combat bots. Individual and team entries welcome.',
-        body: 'The countdown to RoboQuest Arena Finals has begun! Witness custom-built combat bots up to 5kg and precision line-follower bots navigate high-speed obstacle tracks.\n\nOpen exhibition booths will showcase student drone prototypes, robotic arms, and computer vision systems. High-voltage battle rounds kick off Saturday morning. Safety goggles and wristbands will be issued at the arena entrance.',
-        venue: 'Engineering Block, Lab 301',
-        eventDate: daysFromNow(24, 10),
-        postedAt: daysFromNow(-2, 11),
-        saved: true,
-        scale: 'state',
-        featured: true,
-        isMyClub: false,
-        registrationUrl: 'https://roboquest.apex.edu/tickets'
-      },
-      {
-        id: 'ann-designsprint-2026',
-        eventId: 'evt-designsprint',
-        title: 'UI/UX Design Sprint Masterclass',
-        clubName: 'Design & Creative Guild',
-        collegeName: 'National Institute of Technology',
-        category: 'Workshop',
-        status: 'Happening Now',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
-        preview: 'A one-day intensive design sprint where participants tackle real-world UX challenges. Learn Figma, wireframing, user research, and rapid prototyping.',
-        body: 'Level up your design craft! Join this intensive 1-day masterclass covering atomic design systems, micro-interactions, accessibility guidelines, and Figma auto-layout secrets.\n\nAll attendees receive starter Figma UI kits, case study templates, and certificate of completion. Please bring your laptop with Figma desktop app installed.',
-        venue: 'Seminar Hall 2, Block C',
-        eventDate: daysFromNow(5, 14),
-        postedAt: daysFromNow(-1, 9),
-        saved: false,
-        scale: 'college',
-        featured: false,
-        isMyClub: true,
-        registrationUrl: 'https://designguild.campus.edu/sprint'
-      },
-      {
-        id: 'ann-kalakriti-2026',
-        eventId: 'evt-kalakriti',
-        title: 'Cultural Fest 2026 & Grand Gala',
-        clubName: 'Fine Arts & Drama Society',
-        collegeName: 'Metropolitan University',
-        category: 'Cultural',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
-        preview: 'A two-day celebration of art, music, dance, and culture. Featuring live performances, food stalls, photography exhibitions, and an open-stage night.',
-        body: 'Immerse yourself in Kalakriti 2026, the biggest inter-college cultural celebration of the season! Highlights include the Grand Battle of the Bands, classical dance fusion, street play showdowns, and acoustic night under the stars.\n\nFood trucks and artisan student pop-up shops will line the promenade. Entry is complimentary with student badge registration.',
-        venue: 'Open Air Amphitheatre',
-        eventDate: daysFromNow(18, 17),
-        postedAt: daysFromNow(-3, 16),
-        saved: false,
-        scale: 'state',
-        featured: true,
-        isMyClub: false,
-        registrationUrl: 'https://kalakriti.metro.edu/entry'
-      },
-      {
-        id: 'ann-futsal-2026',
-        eventId: 'evt-futsal',
-        title: 'Inter-University Futsal & Athletics League',
-        clubName: 'Campus Athletics Board',
-        collegeName: 'State Sports Academy',
-        category: 'Sports',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
-        preview: '16 collegiate teams compete for the prestigious Chancellor’s Trophy. High-octane knockout fixtures under the arena floodlights.',
-        body: 'The Inter-University League returns with fast-paced futsal under the arena floodlights, track sprints, and volleyball championships. Come cheer for your college squad as rival campuses clash for the championship trophy!\n\nRefreshment zones and live commentary stations will be set up around the sports pavilion.',
-        venue: 'University Sports Complex, Pitch 1',
-        eventDate: daysFromNow(8, 16),
-        postedAt: daysFromNow(-4, 10),
-        saved: false,
-        scale: 'national',
-        featured: true,
-        isMyClub: false,
-        registrationUrl: 'https://athletics.sports.edu/fixtures'
-      },
-      {
-        id: 'ann-ai-seminar-2026',
-        eventId: 'evt-ai-seminar',
-        title: 'Agentic Machine Systems Colloquium',
-        clubName: 'ACM Student Chapter',
-        collegeName: 'National Institute of Technology',
-        category: 'Seminar',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1200&q=80',
-        preview: 'Distinguished Research Scientist Dr. Aris Thorne discusses distributed multi-agent intelligence and real-time reasoning architectures.',
-        body: 'We are honored to host Dr. Aris Thorne, pioneering researcher in Distributed Autonomous Systems, for an exclusive campus colloquium. The talk will demystify multi-agent coordination, deterministic execution boundaries, and the future of human-AI collaboration in software engineering.\n\nA 30-minute interactive Q&A will follow the keynote, with networking coffee for researchers and students.',
-        venue: 'Auditorium Hall B',
-        eventDate: daysFromNow(15, 11),
-        postedAt: daysFromNow(-2, 8),
-        saved: false,
-        scale: 'college',
-        featured: false,
-        isMyClub: true,
-        registrationUrl: 'https://acm.campus.edu/thorne-keynote'
-      },
-      {
-        id: 'ann-springfest-2026',
-        eventId: 'evt-springfest',
-        title: 'Spring Carnival & Startup Expo',
-        clubName: 'Student Activity Council',
-        collegeName: 'Skyline Campus',
-        category: 'Fest',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
-        preview: 'Carnival games, drone light show, live acoustic indie bands, and student entrepreneur startup booths across campus lawns.',
-        body: 'Planova presents the annual Spring Carnival! A vibrant outdoor festival featuring 30+ interactive game stalls, laser tag arenas, student innovation booths, and delicious gourmet food pop-ups.\n\nThe evening concludes with a synchronized 100-drone aerial light show set to music over the campus quad.',
-        venue: 'South Lawn Promenade',
-        eventDate: daysFromNow(21, 15),
-        postedAt: daysFromNow(-5, 12),
-        saved: false,
-        scale: 'state',
-        featured: false,
-        isMyClub: false,
-        registrationUrl: 'https://springfest.skyline.edu/passes'
-      },
-      {
-        id: 'ann-green-drive-2026',
-        eventId: 'evt-greencampus',
-        title: 'Green Earth: 1,000 Saplings Campus Drive',
-        clubName: 'Rotaract & Eco Action Club',
-        collegeName: 'National Institute of Technology',
-        category: 'Social',
-        status: 'Upcoming',
-        coverPhotoUrl: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80',
-        preview: 'Join our community tree planting and botanical tagging drive to make our campus 100% carbon neutral. Eco-badges awarded.',
-        body: 'Be part of the green revolution! In collaboration with local forestry authorities, we are planting 1,000 indigenous trees, building rainwater collection gardens, and installing botanical QR tags across campus.\n\nGloves, tools, and eco-friendly seed kits will be provided. All student volunteers receive community service recognition credits.',
-        venue: 'Botanical Garden & North Perimeter',
-        eventDate: daysFromNow(7, 8),
-        postedAt: daysFromNow(-1, 17),
-        saved: false,
-        scale: 'college',
-        featured: false,
-        isMyClub: true,
-        registrationUrl: 'https://ecoclub.campus.edu/volunteer'
-      }
-    ];
+    const INITIAL_FEED = [];
 
     /* ══════════════════════════════════════════════════════════
        FORMATTING HELPERS & CALENDAR GENERATOR
@@ -1461,6 +1226,7 @@
       const [featuredList, setFeaturedList] = useState([]);
       const [feedList, setFeedList] = useState([]);
       const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
 
       // Filter & sorting states
       const [selectedCategory, setSelectedCategory] = useState('All');
@@ -1484,7 +1250,22 @@
         }
       });
 
-      const showToast = (msg) => {
+      const handleSelectAnnouncement = async (ann) => {
+          setActiveModalItem({ ...ann, loadingDetails: true });
+          try {
+            const res = await fetch(`/api/announcements/${ann.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              setActiveModalItem(prev => prev && prev.id === data.id ? { ...data, loadingDetails: false } : prev);
+            } else {
+              setActiveModalItem(prev => prev && prev.id === ann.id ? { ...prev, loadingDetails: false } : prev);
+            }
+          } catch {
+            setActiveModalItem(prev => prev && prev.id === ann.id ? { ...prev, loadingDetails: false } : prev);
+          }
+        };
+
+        const showToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
       };
@@ -1524,11 +1305,11 @@
       useEffect(() => {
         let isMounted = true;
         async function loadData() {
-          setLoading(true);
+          setLoading(true); setError(null);
           try {
             const [featRes, feedRes] = await Promise.all([
               fetch('/api/announcements/featured').catch(() => null),
-              fetch('/api/announcements/feed').catch(() => null)
+              fetch('/api/announcements/feed').catch(err => { setError('Failed to load announcements'); return null; })
             ]);
 
             if (featRes && featRes.ok) {
@@ -1718,19 +1499,7 @@
             {!searchQuery && selectedCategory === 'All' && !showSavedOnly && (
               <RecentNoticesSection
                 notices={RECENT_NOTICES}
-                onSelectNotice={(notice) => {
-                  setActiveModalItem({
-                    id: notice.id,
-                    title: notice.title,
-                    clubName: notice.eventName,
-                    collegeName: 'Campus Organisers',
-                    category: notice.category,
-                    eventDate: notice.date,
-                    venue: 'Campus Arena',
-                    preview: notice.message,
-                    body: notice.message
-                  });
-                }}
+                onSelectNotice={(notice) => { handleSelectAnnouncement({ id: notice.id, title: notice.title }); }}
               />
             )}
 
@@ -1821,7 +1590,7 @@
             </div>
 
             {/* 5. ANNOUNCEMENT POSTER WALL GRID */}
-            {loading ? (
+            {error ? (<div className="p-8 text-center bg-red-50 text-red-600 rounded-xl font-bold">{error}</div>) : loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
                   <SkeletonCard key={i} />
@@ -1833,7 +1602,7 @@
                   <AnnouncementCard
                     key={ann.id}
                     announcement={ann}
-                    onSelect={setActiveModalItem}
+                    onSelect={handleSelectAnnouncement}
                     onToggleSave={handleToggleSave}
                     onAddToCalendar={handleAddToCalendar}
                   />

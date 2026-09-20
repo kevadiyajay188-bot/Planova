@@ -59,6 +59,16 @@ class AuthController {
     return success(response, { user: this.authService.publicUser(user) });
   }
 
+  async getProfile(request, response, user) {
+    return success(response, { profile: this.authService.publicUser(user) });
+  }
+
+  async updateProfile(request, response, user) {
+    const body = await readJson(request);
+    const profile = await this.authService.updateProfile(user.id, body);
+    return success(response, { profile });
+  }
+
   async refresh(request, response, user, payload) {
     const result = await this.authService.refresh(user, payload.sid);
     return success(response, { user: result.user }, 200, { token: result.token });
@@ -77,14 +87,14 @@ class AuthController {
 
   async listUsers(request, response, user) {
     if (!requireRole(response, user, [ROLES.PRESIDENT])) return;
-    const users = await this.authService.listUsers();
+    const users = await this.authService.listUsers(user.clubId);
     return success(response, { users });
   }
 
   async updateUser(request, response, user, userId) {
     if (!requireRole(response, user, [ROLES.PRESIDENT])) return;
     const body = await readJson(request);
-    const updated = await this.authService.updateUser(userId, body);
+    const updated = await this.authService.updateUser(userId, body, user.clubId);
     return success(response, { user: updated });
   }
 }

@@ -8,6 +8,8 @@ class User {
     username,
     email,
     passwordHash,
+    avatar,
+    clubId,
     role = ROLES.WEB_USER,
     status = ACCOUNT_STATUSES.ACTIVE,
     createdAt = new Date().toISOString(),
@@ -18,6 +20,8 @@ class User {
     this.name = String(name || this.username).trim();
     this.email = String(email || '').trim().toLowerCase();
     this.passwordHash = passwordHash;
+    this.avatar = avatar || null;
+    this.clubId = String(clubId || '').trim().toUpperCase() || null;
     this.role = normalizeRole(role) || ROLES.WEB_USER;
     this.status = normalizeStatus(status);
     this.createdAt = createdAt;
@@ -34,6 +38,8 @@ class User {
       name: this.name,
       username: this.username,
       email: this.email,
+      avatar: this.avatar,
+      clubId: this.clubId,
       role: this.role,
       status: this.status,
       createdAt: this.createdAt,
@@ -48,6 +54,8 @@ class User {
       username: this.username,
       email: this.email,
       passwordHash: this.passwordHash,
+      avatar: this.avatar,
+      clubId: this.clubId,
       role: this.role,
       status: this.status,
       createdAt: this.createdAt,

@@ -308,7 +308,7 @@ test('TEST 4: Web User logs in, accesses public events & RSVP, but is blocked fr
   const targetEvent = publicEvents[0];
   const rsvpRes = await fetch(`${baseUrl}/api/events/${targetEvent.id}/rsvp`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${body.token}` },
     body: JSON.stringify({ name: 'Web User Attendee', email: 'attendee@campus.edu' })
   });
   assert.equal(rsvpRes.status, 201);

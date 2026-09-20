@@ -9,6 +9,8 @@ function createSeedData() {
   const now = new Date().toISOString();
   return {
     version: 2,
+    clubs: [],
+    memberships: [],
     users: [],
     sessions: [],
     rsvps: [],

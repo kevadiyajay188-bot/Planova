@@ -87,70 +87,7 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect } = React;
 
-    const INITIAL_ANNOUNCEMENTS = [
-      {
-        id: 'ann-1',
-        subject: 'TechNova 2026 Registration is Now Open!',
-        purpose: 'Registration Open',
-        audience: 'All Students & Campuses',
-        channels: ['Email', 'Instagram', 'WhatsApp'],
-        sentBy: 'Jenish (President)',
-        date: 'Sep 10, 2026',
-        status: 'Sent',
-        body: 'Registration is officially live for TechNova Hackathon 2026! 36 hours of hacking, $10k in prize tracks, and direct mentoring from top tech leaders. RSVP today.',
-        variants: {
-          Email: 'Subject: TechNova 2026 Registration is Open!\n\nDear Students,\n\nWe are thrilled to announce that applications for TechNova 2026 are officially open. Join over 350 student hackers for 36 hours of building.',
-          Instagram: '🚀 TechNova 2026 APPLICATIONS LIVE NOW! Link in bio to apply before slots fill up. 💻🔥 #TechNova #Hackathon',
-          WhatsApp: '📢 *TechNova 2026 Registration is Open!* 🚀\nApply now at: https://technova.campus.edu\nLimited seats for teams.'
-        }
-      },
-      {
-        id: 'ann-2',
-        subject: 'Keynote Speaker Announcement: Dr. Aris Thorne',
-        purpose: 'Speaker Reveal',
-        audience: 'Registered Attendees',
-        channels: ['Instagram', 'Notice Board', 'WhatsApp'],
-        sentBy: 'Neha Sharma (Marketing)',
-        date: 'Sep 14, 2026',
-        status: 'Sent',
-        body: 'Proud to announce Dr. Aris Thorne, Principal Research Scientist in Distributed AI, will deliver this year’s opening keynote on Agentic Machine Systems.',
-        variants: {
-          Instagram: '✦ KEYNOTE REVEAL: Welcoming Dr. Aris Thorne to TechNova 2026! 🤖✨',
-          WhatsApp: '🎙️ *Keynote Speaker Announcement:* Dr. Aris Thorne will speak on Autonomous AI at the opening ceremony.',
-          'Notice Board': 'TechNova 2026 Keynote: Dr. Aris Thorne, Friday 10:00 AM Main Auditorium.'
-        }
-      },
-      {
-        id: 'ann-3',
-        subject: 'Urgent: Submit Team Dietary Requirements by Friday',
-        purpose: 'Deadline Warning',
-        audience: 'Accepted Hackers',
-        channels: ['Email', 'WhatsApp'],
-        sentBy: 'Jenish (President)',
-        date: 'Sep 17, 2026',
-        status: 'Sent',
-        body: 'To ensure catering handles vegetarian, vegan, and halal meals properly, all accepted hackers must update meal profiles in the portal.',
-        variants: {
-          Email: 'Please confirm dietary specifications before food counts lock with catering.',
-          WhatsApp: '⚠️ *Reminder:* Update meal dietary preferences on your hacker dashboard.'
-        }
-      },
-      {
-        id: 'ann-4',
-        subject: 'Volunteer Briefing & Walkthrough Tomorrow 5 PM',
-        purpose: 'Operational Sync',
-        audience: 'Volunteers Only',
-        channels: ['WhatsApp', 'Email'],
-        sentBy: 'Rohan Jha (Operations)',
-        date: 'Sep 18, 2026',
-        status: 'Sent',
-        body: 'Mandatory dry run for check-in desks, badges, and auditorium egress paths tomorrow at 5 PM in Room 204.',
-        variants: {
-          WhatsApp: '👥 *Volunteer Dry Run Reminder:* Room 204 tomorrow at 5 PM. Attendance mandatory for shift wristbands.',
-          Email: 'All volunteers must attend the 45-minute orientation tomorrow at 5 PM.'
-        }
-      }
-    ];
+    const INITIAL_ANNOUNCEMENTS = [];
 
     const NAV_ITEMS = [
       { name: 'Dashboard', path: 'dashboard.html', icon: '📊', badge: 'Home' },
@@ -172,7 +109,8 @@
       const [loading, setLoading] = useState(true);
 
       const [tab, setTab] = useState('compose'); // 'compose' | 'history'
-      const [history, setHistory] = useState(INITIAL_ANNOUNCEMENTS);
+      const [history, setHistory] = useState([]);
+      const [error, setError] = useState(null);
 
       // Form State
       const [purpose, setPurpose] = useState('Registration Open');
@@ -196,12 +134,28 @@
         setTimeout(() => setToast(null), 3000);
       };
 
+      const loadHistory = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const res = await fetch('/api/announcements');
+          if (!res.ok) throw new Error('Failed to load announcements');
+          const data = await res.json();
+          setHistory(data);
+        } catch (err) {
+          setError(err.message);
+          showToast('Failed to load announcements');
+        } finally {
+          setLoading(false);
+        }
+      };
+
       useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 400);
-        return () => clearTimeout(timer);
+        loadHistory();
       }, []);
 
       const toggleChannel = (ch) => {
+
         setSelectedChannels(prev => {
           if (prev.includes(ch)) {
             if (prev.length === 1) return prev; // keep at least 1
@@ -252,27 +206,41 @@
         }));
       };
 
-      const handleApproveAndSend = () => {
+      const handleApproveAndSend = async () => {
         if (!generatedVariants) return;
-        const newRecord = {
-          id: `ann-${Date.now()}`,
-          subject: generatedVariants.Email?.subject || `TechNova 2026: ${purpose}`,
+        
+        const payload = {
+          title: generatedVariants.Email?.subject || `TechNova 2026: ${purpose}`,
           purpose,
           audience,
           channels: selectedChannels,
-          sentBy: 'Jenish (President)',
-          date: 'Today, Just now',
-          status: 'Sent',
-          body: generatedVariants[selectedChannels[0]]?.body || 'Broadcast dispatched.',
+          content: generatedVariants[selectedChannels[0]]?.body || 'Broadcast dispatched.',
           variants: Object.fromEntries(
             Object.entries(generatedVariants).map(([k, v]) => [k, v.body])
-          )
+          ),
+          status: 'PUBLISHED'
         };
-        setHistory(prev => [newRecord, ...prev]);
-        setGeneratedVariants(null);
-        setCustomContext('');
-        setTab('history');
-        showToast('🚀 Broadcast approved and dispatched across all selected channels!');
+        
+        try {
+          const res = await fetch('/api/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setHistory(prev => [data.announcement, ...prev]);
+            setGeneratedVariants(null);
+            setCustomContext('');
+            setTab('history');
+            showToast('🚀 Broadcast approved and dispatched across all selected channels!');
+          } else {
+            const errorData = await res.json();
+            showToast('Error: ' + errorData.message);
+          }
+        } catch (err) {
+          showToast('Failed to dispatch broadcast');
+        }
       };
 
       const handleResendReminder = (item) => {
@@ -619,7 +587,14 @@
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {history.map(item => (
+                      
+                      {loading ? (
+                        <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-bold">Loading...</td></tr>
+                      ) : error ? (
+                        <tr><td colSpan="5" className="p-8 text-center text-red-600 font-bold">{error}</td></tr>
+                      ) : history.length === 0 ? (
+                        <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-bold">No announcements found.</td></tr>
+                      ) : history.map(item => (
                         <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="p-4 max-w-xs">
                             <p className="font-bold text-slate-900 leading-tight">{item.subject}</p>
@@ -635,8 +610,8 @@
                               ))}
                             </div>
                           </td>
-                          <td className="p-4 text-slate-600 font-medium">{item.sentBy}</td>
-                          <td className="p-4 text-slate-500 font-medium">{item.date}</td>
+                          <td className="p-4 text-slate-600 font-medium">{item.sentBy || item.author}</td>
+                          <td className="p-4 text-slate-500 font-medium">{item.date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '')}</td>
                           <td className="p-4">
                             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                               ✓ {item.status}
@@ -645,9 +620,19 @@
                           <td className="p-4 text-right">
                             <div className="inline-flex items-center gap-2">
                               <button
-                                onClick={() => {
-                                  setSelectedHistoryItem(item);
-                                  setViewHistoryModal(true);
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`/api/announcements/${item.id}`);
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      setSelectedHistoryItem(data);
+                                      setViewHistoryModal(true);
+                                    } else {
+                                      showToast('Failed to load announcement details');
+                                    }
+                                  } catch (err) {
+                                    showToast('Failed to load announcement details');
+                                  }
                                 }}
                                 className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
                               >

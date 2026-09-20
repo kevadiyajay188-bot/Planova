@@ -350,16 +350,26 @@
       const [toast, setToast] = useState('');
 
       useEffect(() => {
-        fetch('/api/auth/me')
-          .then(res => res.ok ? res.json() : Promise.reject())
-          .then(payload => {
-            const u = payload.data?.user || payload.user;
-            if (u) {
-              setCurrentUser(u);
-              if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: u });
-            }
+        fetch('/api/profile')
+          .then(async res => {
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.message || 'Could not load your profile.');
+            return payload.data?.profile || payload.profile;
           })
-          .catch(() => {});
+          .then(serverProfile => {
+            if (!serverProfile) return;
+            const nextProfile = {
+              ...profile,
+              ...serverProfile,
+              avatar: serverProfile.avatar || profile.avatar
+            };
+            setCurrentUser(serverProfile);
+            setProfile(nextProfile);
+            setDraft(nextProfile);
+            saveProfile(nextProfile);
+            if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: serverProfile });
+          })
+          .catch(error => setErrors({ form: error.message }));
       }, []);
 
       const userName = currentUser?.name || currentUser?.username || profile.name;
@@ -392,17 +402,31 @@
         setIsEditing(false);
       };
 
-      const handleSave = () => {
+      const handleSave = async () => {
         const validation = validate(draft);
         if (Object.keys(validation).length > 0) {
           setErrors(validation);
           return;
         }
-        const updated = { ...draft };
-        setProfile(updated);
-        saveProfile(updated);
-        setIsEditing(false);
-        setToast('Profile saved successfully.');
+        setErrors({});
+        try {
+          const response = await fetch('/api/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: draft.name, email: draft.email, avatar: draft.avatar || null })
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || 'Could not save your profile.');
+          const updated = payload.data?.profile || payload.profile;
+          setProfile({ ...profile, ...updated });
+          setCurrentUser(updated);
+          saveProfile({ ...profile, ...updated });
+          if (window.PlanovaAuth) window.PlanovaAuth.setSession({ user: updated });
+          setIsEditing(false);
+          setToast('Profile saved successfully.');
+        } catch (error) {
+          setErrors({ form: error.message });
+        }
       };
 
       const handleAvatarChange = (newAvatar) => {
@@ -423,6 +447,7 @@
                   <h1 className="text-2xl sm:text-3xl font-black text-[#172554] tracking-tight">My Profile</h1>
                   <p className="text-xs sm:text-sm font-medium text-slate-600 mt-2">View and manage your Planova account details.</p>
                 </div>
+                {errors.form && <p className="text-xs text-red-600 font-medium mt-3">{errors.form}</p>}
                 <div className="flex gap-2.5 flex-shrink-0">
                   {!isEditing ? (
                     <button
@@ -458,7 +483,7 @@
                 <h2 className="text-lg font-black text-[#172554] mt-5">{profile.name}</h2>
                 <p className="text-sm text-slate-500 mt-1">{profile.email}</p>
                 <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EEF2FF] text-[#3730A3] border border-[#C7D2FE] text-[11px] font-black uppercase tracking-wider">
-                  Web User
+                  {currentUser?.role === 'WEB_USER' ? 'Web User' : (currentUser?.role || 'Web User')}
                 </div>
               </section>
 

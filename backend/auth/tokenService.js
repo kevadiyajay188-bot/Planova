@@ -15,17 +15,18 @@ class TokenService {
     return verify(token, this.jwtSecret);
   }
 
-  async createSession(store, userId, ttlHours = this.tokenTtlHours) {
+  async createSession(store, userId, clubId, ttlHours = this.tokenTtlHours) {
     const sessionId = crypto.randomUUID();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + (ttlHours * 60 * 60 * 1000));
-    const token = this.generateToken({ sub: userId, sid: sessionId }, ttlHours);
+    const token = this.generateToken({ sub: userId, sid: sessionId, clubId }, ttlHours);
 
     await store.update((data) => {
       if (!Array.isArray(data.sessions)) data.sessions = [];
       data.sessions.push({
         id: sessionId,
         userId,
+        clubId,
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
         revokedAt: null

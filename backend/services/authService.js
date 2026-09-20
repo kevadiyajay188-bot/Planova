@@ -1,7 +1,8 @@
 const crypto = require('node:crypto');
 const { hashPassword, compare } = require('../auth/passwordService');
-const { clientError, validateIdentity, validateRegistration, validateLogin, validateRoleChange, validateStatusChange } = require('../auth/authValidation');
+const { clientError, validateIdentity, validateRegistration, validateLogin, validateProfileUpdate, validateClubId, validateRoleChange, validateStatusChange } = require('../auth/authValidation');
 const { ROLES, ACCOUNT_STATUSES, normalizeRole, normalizeStatus, isPresident } = require('../auth/roles');
+const { Club, DEFAULT_CLUB_ID, DEFAULT_CLUB_NAME } = require('../models/Club');
 const { TokenService } = require('../auth/tokenService');
 const { User } = require('../models/User');
 
@@ -12,6 +13,8 @@ function publicUser(user) {
     name: user.name || user.username,
     email: user.email,
     username: user.username,
+    avatar: user.avatar || null,
+    clubId: user.clubId || null,
     role: normalizeRole(user.role) || ROLES.WEB_USER,
     status: normalizeStatus(user.status),
     createdAt: user.createdAt,
@@ -34,13 +37,31 @@ function safeSecretMatches(candidate, expected) {
 function createAuthService(store, config) {
   const tokenService = new TokenService(config);
 
-  function createUserRecord(identity, role) {
+  function resolveRegistrationClub(data, input, hasExistingUsers) {
+    const requestedClubId = input.clubId ? validateClubId(input.clubId) : DEFAULT_CLUB_ID;
+    const existing = (data.clubs || []).find((club) => club.clubId === requestedClubId);
+    if (existing) return existing;
+    if (hasExistingUsers) {
+      const error = new Error('That Club ID does not exist.');
+      error.status = 422;
+      throw error;
+    }
+    const created = new Club({
+      clubId: requestedClubId,
+      name: input.clubName || (requestedClubId === DEFAULT_CLUB_ID ? DEFAULT_CLUB_NAME : `Club ${requestedClubId}`)
+    }).toJSON();
+    data.clubs.push(created);
+    return created;
+  }
+
+  function createUserRecord(identity, role, clubId) {
     const now = new Date().toISOString();
     return new User({
       id: crypto.randomUUID(),
       name: identity.name,
       email: identity.email,
       username: identity.username,
+      clubId,
       role,
       status: ACCOUNT_STATUSES.ACTIVE,
       passwordHash: hashPassword(identity.password),
@@ -71,13 +92,16 @@ function createAuthService(store, config) {
     const normalized = validateRegistration(input, hasExistingUsers);
 
     let created;
+    let club;
     await store.update((data) => {
       assertUnique(data, normalized);
-      created = createUserRecord(normalized, normalized.role);
+      club = resolveRegistrationClub(data, input, hasExistingUsers);
+      created = createUserRecord(normalized, normalized.role, club.clubId);
       data.users.push(created);
+      data.memberships.push({ id: `${created.id}:${club.clubId}`, userId: created.id, clubId: club.clubId, role: created.role, status: created.status, createdAt: created.createdAt, updatedAt: created.updatedAt });
     });
 
-    const { token } = await tokenService.createSession(store, created.id);
+    const { token } = await tokenService.createSession(store, created.id, created.clubId);
     return { user: publicUser(created), token };
   }
 
@@ -94,13 +118,16 @@ function createAuthService(store, config) {
     }
     const normalized = validateIdentity(input);
     let created;
+    let club;
     await store.update((data) => {
       if ((data.users || []).length > 0) throw conflict('Initial administrator setup has already been completed.');
       assertUnique(data, normalized);
-      created = createUserRecord(normalized, ROLES.PRESIDENT);
+      club = resolveRegistrationClub(data, input, false);
+      created = createUserRecord(normalized, ROLES.PRESIDENT, club.clubId);
       data.users.push(created);
+      data.memberships.push({ id: `${created.id}:${club.clubId}`, userId: created.id, clubId: club.clubId, role: created.role, status: created.status, createdAt: created.createdAt, updatedAt: created.updatedAt });
     });
-    const { token } = await tokenService.createSession(store, created.id);
+    const { token } = await tokenService.createSession(store, created.id, created.clubId);
     return { user: publicUser(created), token };
   }
 
@@ -115,8 +142,35 @@ function createAuthService(store, config) {
       throw error;
     }
 
-    const { token } = await tokenService.createSession(store, user.id);
+    const { token } = await tokenService.createSession(store, user.id, user.clubId);
     return { user: publicUser(user), token };
+  }
+
+  async function updateProfile(userId, input) {
+    const profile = validateProfileUpdate(input);
+    let updated;
+    await store.update((data) => {
+      const index = (data.users || []).findIndex((candidate) => candidate.id === userId);
+      if (index < 0) {
+        const error = new Error('User not found.');
+        error.status = 404;
+        throw error;
+      }
+      if (data.users.some((candidate, candidateIndex) => candidateIndex !== index && candidate.email === profile.email)) {
+        throw conflict('An account with this email already exists.');
+      }
+      const current = data.users[index];
+      const now = new Date().toISOString();
+      data.users[index] = {
+        ...current,
+        name: profile.name,
+        email: profile.email,
+        avatar: profile.avatar,
+        updatedAt: now
+      };
+      updated = data.users[index];
+    });
+    return publicUser(updated);
   }
 
   async function logout(user, sessionId) {
@@ -126,20 +180,20 @@ function createAuthService(store, config) {
 
   async function refresh(user, sessionId) {
     await logout(user, sessionId);
-    const { token } = await tokenService.createSession(store, user.id);
+    const { token } = await tokenService.createSession(store, user.id, user.clubId);
     return { user: publicUser(user), token };
   }
 
-  async function listUsers() {
+  async function listUsers(clubId) {
     const data = await store.read();
-    return (data.users || []).map(publicUser);
+    return (data.users || []).filter((user) => user.clubId === clubId).map(publicUser);
   }
 
-  async function updateUser(userId, input) {
+  async function updateUser(userId, input, clubId) {
     let result;
     await store.update((data) => {
       const index = (data.users || []).findIndex((candidate) => candidate.id === userId);
-      if (index < 0) {
+      if (index < 0 || data.users[index].clubId !== clubId) {
         const error = new Error('User not found.');
         error.status = 404;
         throw error;
@@ -154,6 +208,13 @@ function createAuthService(store, config) {
       }
       const now = new Date().toISOString();
       data.users[index] = { ...current, role: nextRole, status: nextStatus, updatedAt: now };
+      for (const membership of data.memberships || []) {
+        if (membership.userId === current.id && membership.clubId === current.clubId) {
+          membership.role = nextRole;
+          membership.status = nextStatus;
+          membership.updatedAt = now;
+        }
+      }
       if (nextStatus !== ACCOUNT_STATUSES.ACTIVE) {
         for (const session of data.sessions || []) {
           if (session.userId === current.id && !session.revokedAt) session.revokedAt = now;
@@ -169,6 +230,7 @@ function createAuthService(store, config) {
     signup: register,
     bootstrap,
     login,
+    updateProfile,
     logout,
     refresh,
     listUsers,

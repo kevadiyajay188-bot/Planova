@@ -39,6 +39,14 @@ async function handleAuthRoutes(request, response, url, context) {
     return await controller.getMe(request, response, user);
   }
 
+  if (request.method === 'GET' && pathname === '/api/profile') {
+    return await controller.getProfile(request, response, user);
+  }
+
+  if (request.method === 'PATCH' && pathname === '/api/profile') {
+    return await controller.updateProfile(request, response, user);
+  }
+
   if (request.method === 'POST' && pathname === '/api/auth/logout') {
     return await controller.logout(request, response, user, payload || {});
   }

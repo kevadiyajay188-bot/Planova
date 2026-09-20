@@ -25,9 +25,13 @@ async function authenticateUser(request, context) {
     if (!session || session.revokedAt || new Date(session.expiresAt).getTime() <= Date.now()) {
       return null;
     }
+    if (!session.clubId || session.clubId !== user.clubId || (payload.clubId && payload.clubId !== session.clubId)) return null;
   }
 
-  return { user, payload, token };
+  const club = (data.clubs || []).find((candidate) => candidate.clubId === user.clubId && candidate.status === 'ACTIVE');
+  if (!club) return null;
+
+  return { user, club, payload, token };
 }
 
 async function requireUser(request, response, context) {
