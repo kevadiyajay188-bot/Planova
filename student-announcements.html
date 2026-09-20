@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Announcements — Planova Campus Discovery</title>
+  <meta name="description" content="Discover campus club announcements, hackathons, workshops, fests, and cultural events across colleges in a vibrant poster-wall feed.">
+  <link rel="icon" type="image/jpeg" href="planova-logo.jpg">
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+          colors: {
+            brand: '#000000',
+            'brand-dark': '#1E293B',
+            'brand-surface': '#F8FAFC',
+            'brand-border': '#E2E8F0',
+            ai: '#0E7490'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18, ReactDOM, and Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Clean Card base */
+    .discovery-card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, border-color 180ms ease;
+    }
+    .discovery-card:hover {
+      transform: translateY(-3px);
+    }
+
+    /* Black buttons */
+    .btn-black {
+      background-color: #000000;
+      color: #FFFFFF;
+      transition: background-color 150ms ease, transform 150ms ease;
+    }
+    .btn-black:hover {
+      background-color: #1E293B;
+      transform: translateY(-1px);
+    }
+    .btn-black:active {
+      transform: scale(0.98);
+    }
+
+    .btn-ghost {
+      background-color: #FFFFFF;
+      color: #0F172A;
+      border: 1px solid #E2E8F0;
+      transition: all 150ms ease;
+    }
+    .btn-ghost:hover {
+      background-color: #F8FAFC;
+      border-color: #CBD5E1;
+    }
+
+    /* Skeleton shimmer animation */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-box {
+      background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.8s infinite;
+    }
+
+    /* Smooth fade in */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal {
+      animation: fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    /* ══════════════════════════════════════════════════════════
+       CATEGORY COLOR SYSTEM  (Content Colors Only - No Purple in UI)
+       Strict constraint: #0E7490 is AI accent only.
+       ══════════════════════════════════════════════════════════ */
+    const CATEGORY_COLORS = {
+      Hackathon: {
+        color: '#7C3AED',
+        softBg: '#F3ECFE',
+        borderTint: 'rgba(124, 58, 237, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(124, 58, 237, 0.15)',
+        gradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)'
+      },
+      Workshop: {
+        color: '#2563EB',
+        softBg: '#EAF1FE',
+        borderTint: 'rgba(37, 99, 235, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(37, 99, 235, 0.15)',
+        gradient: 'linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%)'
+      },
+      Cultural: {
+        color: '#DB2777',
+        softBg: '#FDEBF4',
+        borderTint: 'rgba(219, 39, 119, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(219, 39, 119, 0.15)',
+        gradient: 'linear-gradient(135deg, #DB2777 0%, #831843 100%)'
+      },
+      Technical: {
+        color: '#0D9488',
+        softBg: '#E6F7F5',
+        borderTint: 'rgba(13, 148, 136, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(13, 148, 136, 0.15)',
+        gradient: 'linear-gradient(135deg, #0D9488 0%, #134E4A 100%)'
+      },
+      Sports: {
+        color: '#059669',
+        softBg: '#E6F9F1',
+        borderTint: 'rgba(5, 150, 105, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(5, 150, 105, 0.15)',
+        gradient: 'linear-gradient(135deg, #059669 0%, #064E3B 100%)'
+      },
+      Seminar: {
+        color: '#D97706',
+        softBg: '#FDF3E3',
+        borderTint: 'rgba(217, 119, 6, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(217, 119, 6, 0.15)',
+        gradient: 'linear-gradient(135deg, #D97706 0%, #78350F 100%)'
+      },
+      Fest: {
+        color: '#EA580C',
+        softBg: '#FEEEE6',
+        borderTint: 'rgba(234, 88, 12, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(234, 88, 12, 0.15)',
+        gradient: 'linear-gradient(135deg, #EA580C 0%, #7C2D12 100%)'
+      },
+      Social: {
+        color: '#64748B',
+        softBg: '#F1F2F5',
+        borderTint: 'rgba(100, 116, 139, 0.22)',
+        shadowHover: '0 10px 24px -4px rgba(100, 116, 139, 0.15)',
+        gradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)'
+      }
+    };
+
+    const ALL_CATEGORIES = ['All', 'Hackathon', 'Workshop', 'Cultural', 'Technical', 'Sports', 'Seminar', 'Fest', 'Social'];
+
+    /* ══════════════════════════════════════════════════════════
+       FALLBACK / SEED DATASET  (Resilient client backup)
+       ══════════════════════════════════════════════════════════ */
+    function daysFromNow(days, hour = 10) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      d.setHours(hour, 0, 0, 0);
+      return d.toISOString();
+    }
+
+    const INITIAL_FEATURED = [
+      {
+        id: 'ann-technova-2026',
+        title: 'TechNova Hackathon 2026: Applications Now Open!',
+        clubName: 'IEEE Student Branch',
+        collegeName: 'National Institute of Technology',
+        category: 'Hackathon',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80',
+        scale: 'national',
+        venue: 'Central Auditorium, Tech Campus',
+        eventDate: daysFromNow(12, 9),
+        registrationUrl: 'https://technova.campus.edu/register'
+      },
+      {
+        id: 'ann-kalakriti-2026',
+        title: 'Kalakriti Annual Cultural Gala & Stage Revelry',
+        clubName: 'Fine Arts & Drama Society',
+        collegeName: 'Metropolitan University',
+        category: 'Cultural',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1400&q=80',
+        scale: 'state',
+        venue: 'Open Air Amphitheatre',
+        eventDate: daysFromNow(18, 17),
+        registrationUrl: 'https://kalakriti.metro.edu/entry'
+      },
+      {
+        id: 'ann-futsal-2026',
+        title: 'Inter-University Futsal & Athletics League 2026',
+        clubName: 'Campus Athletics Board',
+        collegeName: 'State Sports Academy',
+        category: 'Sports',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1400&q=80',
+        scale: 'national',
+        venue: 'University Sports Complex, Pitch 1',
+        eventDate: daysFromNow(8, 16),
+        registrationUrl: 'https://athletics.sports.edu/fixtures'
+      },
+      {
+        id: 'ann-roboquest-2026',
+        title: 'RoboQuest Championship: Arena Combat Finalists Announced',
+        clubName: 'Robotics & Automation Society',
+        collegeName: 'Apex Institute of Engineering',
+        category: 'Technical',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1400&q=80',
+        scale: 'state',
+        venue: 'Indoor Sports Complex Arena',
+        eventDate: daysFromNow(24, 10),
+        registrationUrl: 'https://roboquest.apex.edu/tickets'
+      }
+    ];
+
+    const RECENT_NOTICES = [
+      {
+        id: 'notice-wifi',
+        title: 'Wi-Fi Maintenance Notice',
+        date: '2026-10-10',
+        eventName: 'TechNova Hackathon 2026',
+        category: 'Hackathon',
+        message: 'Please note that campus Wi-Fi will undergo maintenance during the TechNova Hackathon. We are setting up dedicated secondary routers in the Central Auditorium, so internet access will not be interrupted for participants.'
+      },
+      {
+        id: 'notice-reg',
+        title: 'Registration Closing Soon',
+        date: '2026-10-20',
+        eventName: 'RoboQuest 2026',
+        category: 'Technical',
+        message: 'Registrations for RoboQuest 2026 will close in exactly 48 hours. Please ensure your team members have all RSVP\'d using their university email addresses. No on-the-spot registrations will be accepted.'
+      },
+      {
+        id: 'notice-sprint',
+        title: 'Design Sprint Pre-requisites',
+        date: '2026-10-06',
+        eventName: 'UI/UX Design Sprint',
+        category: 'Workshop',
+        message: 'All participants must have Figma installed and an account created before attending the sprint. Please bring a mouse and your laptop charger.'
+      }
+    ];
+
+    const INITIAL_FEED = [
+      {
+        id: 'ann-technova-2026',
+        eventId: 'evt-technova',
+        title: 'TechNova Hackathon 2026',
+        clubName: 'IEEE Student Branch',
+        collegeName: 'National Institute of Technology',
+        category: 'Hackathon',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+        preview: 'A 36-hour open hackathon for students across all branches. Build, prototype, and pitch your idea to industry judges. Prizes worth ₹1,50,000.',
+        body: 'TechNova 2026 registration is officially live! Planova’s flagship 36-hour hackathon brings together student developers, designers, and innovators from across 40+ colleges.\n\nTracks include Generative AI Systems, Decentralized Apps, IoT & Hardware, and Social Impact Tech. Mentors from top engineering teams will be on-site 24/7, with hardware kits, cloud computing credits, and meals provided throughout the event. Form teams of 2 to 4 students. Limited seats available — RSVP early to guarantee your participation kit.',
+        venue: 'Central Auditorium, Block A',
+        eventDate: daysFromNow(12, 9),
+        postedAt: daysFromNow(-1, 14),
+        saved: false,
+        scale: 'national',
+        featured: true,
+        isMyClub: true,
+        registrationUrl: 'https://technova.campus.edu/register'
+      },
+      {
+        id: 'ann-roboquest-2026',
+        eventId: 'evt-roboquest',
+        title: 'RoboQuest 2026 Championship',
+        clubName: 'Robotics & Automation Society',
+        collegeName: 'Apex Institute of Engineering',
+        category: 'Technical',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+        preview: 'Annual robotics competition featuring line-follower, maze-solver, and autonomous combat bots. Individual and team entries welcome.',
+        body: 'The countdown to RoboQuest Arena Finals has begun! Witness custom-built combat bots up to 5kg and precision line-follower bots navigate high-speed obstacle tracks.\n\nOpen exhibition booths will showcase student drone prototypes, robotic arms, and computer vision systems. High-voltage battle rounds kick off Saturday morning. Safety goggles and wristbands will be issued at the arena entrance.',
+        venue: 'Engineering Block, Lab 301',
+        eventDate: daysFromNow(24, 10),
+        postedAt: daysFromNow(-2, 11),
+        saved: true,
+        scale: 'state',
+        featured: true,
+        isMyClub: false,
+        registrationUrl: 'https://roboquest.apex.edu/tickets'
+      },
+      {
+        id: 'ann-designsprint-2026',
+        eventId: 'evt-designsprint',
+        title: 'UI/UX Design Sprint Masterclass',
+        clubName: 'Design & Creative Guild',
+        collegeName: 'National Institute of Technology',
+        category: 'Workshop',
+        status: 'Happening Now',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
+        preview: 'A one-day intensive design sprint where participants tackle real-world UX challenges. Learn Figma, wireframing, user research, and rapid prototyping.',
+        body: 'Level up your design craft! Join this intensive 1-day masterclass covering atomic design systems, micro-interactions, accessibility guidelines, and Figma auto-layout secrets.\n\nAll attendees receive starter Figma UI kits, case study templates, and certificate of completion. Please bring your laptop with Figma desktop app installed.',
+        venue: 'Seminar Hall 2, Block C',
+        eventDate: daysFromNow(5, 14),
+        postedAt: daysFromNow(-1, 9),
+        saved: false,
+        scale: 'college',
+        featured: false,
+        isMyClub: true,
+        registrationUrl: 'https://designguild.campus.edu/sprint'
+      },
+      {
+        id: 'ann-kalakriti-2026',
+        eventId: 'evt-kalakriti',
+        title: 'Cultural Fest 2026 & Grand Gala',
+        clubName: 'Fine Arts & Drama Society',
+        collegeName: 'Metropolitan University',
+        category: 'Cultural',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
+        preview: 'A two-day celebration of art, music, dance, and culture. Featuring live performances, food stalls, photography exhibitions, and an open-stage night.',
+        body: 'Immerse yourself in Kalakriti 2026, the biggest inter-college cultural celebration of the season! Highlights include the Grand Battle of the Bands, classical dance fusion, street play showdowns, and acoustic night under the stars.\n\nFood trucks and artisan student pop-up shops will line the promenade. Entry is complimentary with student badge registration.',
+        venue: 'Open Air Amphitheatre',
+        eventDate: daysFromNow(18, 17),
+        postedAt: daysFromNow(-3, 16),
+        saved: false,
+        scale: 'state',
+        featured: true,
+        isMyClub: false,
+        registrationUrl: 'https://kalakriti.metro.edu/entry'
+      },
+      {
+        id: 'ann-futsal-2026',
+        eventId: 'evt-futsal',
+        title: 'Inter-University Futsal & Athletics League',
+        clubName: 'Campus Athletics Board',
+        collegeName: 'State Sports Academy',
+        category: 'Sports',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+        preview: '16 collegiate teams compete for the prestigious Chancellor’s Trophy. High-octane knockout fixtures under the arena floodlights.',
+        body: 'The Inter-University League returns with fast-paced futsal under the arena floodlights, track sprints, and volleyball championships. Come cheer for your college squad as rival campuses clash for the championship trophy!\n\nRefreshment zones and live commentary stations will be set up around the sports pavilion.',
+        venue: 'University Sports Complex, Pitch 1',
+        eventDate: daysFromNow(8, 16),
+        postedAt: daysFromNow(-4, 10),
+        saved: false,
+        scale: 'national',
+        featured: true,
+        isMyClub: false,
+        registrationUrl: 'https://athletics.sports.edu/fixtures'
+      },
+      {
+        id: 'ann-ai-seminar-2026',
+        eventId: 'evt-ai-seminar',
+        title: 'Agentic Machine Systems Colloquium',
+        clubName: 'ACM Student Chapter',
+        collegeName: 'National Institute of Technology',
+        category: 'Seminar',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1200&q=80',
+        preview: 'Distinguished Research Scientist Dr. Aris Thorne discusses distributed multi-agent intelligence and real-time reasoning architectures.',
+        body: 'We are honored to host Dr. Aris Thorne, pioneering researcher in Distributed Autonomous Systems, for an exclusive campus colloquium. The talk will demystify multi-agent coordination, deterministic execution boundaries, and the future of human-AI collaboration in software engineering.\n\nA 30-minute interactive Q&A will follow the keynote, with networking coffee for researchers and students.',
+        venue: 'Auditorium Hall B',
+        eventDate: daysFromNow(15, 11),
+        postedAt: daysFromNow(-2, 8),
+        saved: false,
+        scale: 'college',
+        featured: false,
+        isMyClub: true,
+        registrationUrl: 'https://acm.campus.edu/thorne-keynote'
+      },
+      {
+        id: 'ann-springfest-2026',
+        eventId: 'evt-springfest',
+        title: 'Spring Carnival & Startup Expo',
+        clubName: 'Student Activity Council',
+        collegeName: 'Skyline Campus',
+        category: 'Fest',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+        preview: 'Carnival games, drone light show, live acoustic indie bands, and student entrepreneur startup booths across campus lawns.',
+        body: 'Planova presents the annual Spring Carnival! A vibrant outdoor festival featuring 30+ interactive game stalls, laser tag arenas, student innovation booths, and delicious gourmet food pop-ups.\n\nThe evening concludes with a synchronized 100-drone aerial light show set to music over the campus quad.',
+        venue: 'South Lawn Promenade',
+        eventDate: daysFromNow(21, 15),
+        postedAt: daysFromNow(-5, 12),
+        saved: false,
+        scale: 'state',
+        featured: false,
+        isMyClub: false,
+        registrationUrl: 'https://springfest.skyline.edu/passes'
+      },
+      {
+        id: 'ann-green-drive-2026',
+        eventId: 'evt-greencampus',
+        title: 'Green Earth: 1,000 Saplings Campus Drive',
+        clubName: 'Rotaract & Eco Action Club',
+        collegeName: 'National Institute of Technology',
+        category: 'Social',
+        status: 'Upcoming',
+        coverPhotoUrl: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80',
+        preview: 'Join our community tree planting and botanical tagging drive to make our campus 100% carbon neutral. Eco-badges awarded.',
+        body: 'Be part of the green revolution! In collaboration with local forestry authorities, we are planting 1,000 indigenous trees, building rainwater collection gardens, and installing botanical QR tags across campus.\n\nGloves, tools, and eco-friendly seed kits will be provided. All student volunteers receive community service recognition credits.',
+        venue: 'Botanical Garden & North Perimeter',
+        eventDate: daysFromNow(7, 8),
+        postedAt: daysFromNow(-1, 17),
+        saved: false,
+        scale: 'college',
+        featured: false,
+        isMyClub: true,
+        registrationUrl: 'https://ecoclub.campus.edu/volunteer'
+      }
+    ];
+
+    /* ══════════════════════════════════════════════════════════
+       FORMATTING HELPERS & CALENDAR GENERATOR
+       ══════════════════════════════════════════════════════════ */
+    function formatEventDate(dateString) {
+      try {
+        const d = new Date(dateString);
+        return d.toLocaleDateString('en-US', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+      } catch {
+        return dateString;
+      }
+    }
+
+    function formatTime(dateString) {
+      try {
+        const d = new Date(dateString);
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return '09:00 AM';
+      }
+    }
+
+    function timeAgo(dateString) {
+      try {
+        const d = new Date(dateString);
+        const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diffSec < 3600) return `${Math.max(1, Math.floor(diffSec / 60))}m ago`;
+        if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+        return `${Math.floor(diffSec / 86400)}d ago`;
+      } catch {
+        return '';
+      }
+    }
+
+    // Google Calendar URL builder
+    function buildGoogleCalendarUrl(event) {
+      const title = encodeURIComponent(event.title || 'Campus Event');
+      const details = encodeURIComponent(`${event.preview || event.body || ''}\n\nOrganized by: ${event.clubName || ''} (${event.collegeName || ''})`);
+      const location = encodeURIComponent(event.venue || 'Campus');
+      const startIso = new Date(event.eventDate || Date.now()).toISOString().replace(/-|:|\.\d+/g, '');
+      const endIso = new Date(new Date(event.eventDate || Date.now()).getTime() + 2 * 3600000).toISOString().replace(/-|:|\.\d+/g, '');
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${startIso}/${endIso}`;
+    }
+
+    // Download iCal .ics file
+    function downloadIcsFile(event) {
+      const startIso = new Date(event.eventDate || Date.now()).toISOString().replace(/-|:|\.\d+/g, '');
+      const endIso = new Date(new Date(event.eventDate || Date.now()).getTime() + 2 * 3600000).toISOString().replace(/-|:|\.\d+/g, '');
+      const icsData = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Planova Campus Discovery//EN',
+        'BEGIN:VEVENT',
+        `UID:${event.id || Date.now()}@planova.campus`,
+        `DTSTAMP:${startIso}`,
+        `DTSTART:${startIso}`,
+        `DTEND:${endIso}`,
+        `SUMMARY:${event.title || 'Campus Event'}`,
+        `DESCRIPTION:${(event.preview || event.body || '').replace(/\n/g, ' ')}`,
+        `LOCATION:${event.venue || 'Campus'}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', `${(event.title || 'event').replace(/[^a-zA-Z0-9]/g, '_')}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SVG ICONS
+       ══════════════════════════════════════════════════════════ */
+    const IconSearch = () => (
+      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    );
+    const IconCalendar = () => (
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    );
+    const IconLocation = () => (
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    );
+    const IconBookmark = ({ filled }) => (
+      <svg className="w-5 h-5 transition-transform active:scale-125" viewBox="0 0 24 24" fill={filled ? '#000000' : 'none'} stroke={filled ? '#000000' : 'currentColor'} strokeWidth={filled ? '0' : '2'}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+      </svg>
+    );
+    const IconArrowRight = () => (
+      <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+      </svg>
+    );
+    const IconBell = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+    );
+    const IconShare = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+    );
+    const IconClose = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+    const IconPlus = () => (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+      </svg>
+    );
+
+    /* ══════════════════════════════════════════════════════════
+       1. TOP BAR  (No Purple - Black Buttons & "Add to Calendar" in place of user/calendar)
+       ══════════════════════════════════════════════════════════ */
+    function TopBar({ searchQuery, onSearchChange, savedCount, onToggleSavedFilter, showingSavedOnly, onOpenCalendarSync }) {
+      const authUser = window.PlanovaAuth ? window.PlanovaAuth.user() : null;
+      const userName = authUser?.name || authUser?.username || 'Alex Green';
+      const userInitial = (userName[0] || 'A').toUpperCase();
+
+      return (
+        <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+
+            {/* Logo & Add to Calendar */}
+            <div className="flex items-center gap-4 sm:gap-6 flex-shrink-0">
+              <a href="student-announcements.html" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 group-hover:border-black transition-colors">
+                  <img
+                    src="planova-logo.jpg"
+                    alt="Planova Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<span class="font-black text-black text-lg">P</span>';
+                    }}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-black leading-none">PLANOVA</span>
+                    <span className="hidden sm:inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                      Announcements
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Campus Club Hub</span>
+                </div>
+              </a>
+
+              {/* In place of "user / event calendar", prominent "Add to Calendar" button */}
+              <button
+                type="button"
+                onClick={onOpenCalendarSync}
+                className="btn-black px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2"
+                title="Add campus events to your personal calendar"
+              >
+                <IconCalendar />
+                <span className="hidden md:inline">Add to Calendar</span>
+                <span className="md:hidden">Calendar</span>
+              </button>
+            </div>
+
+            {/* Search Bar (Center, searches title/club/venue) */}
+            <div className="flex-1 max-w-md mx-2 sm:mx-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <IconSearch />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder="Search announcements, clubs, venues..."
+                  className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-white focus:bg-white text-xs font-medium text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200 focus:border-black focus:ring-2 focus:ring-slate-100 transition-all outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700"
+                    title="Clear search"
+                  >
+                    <IconClose />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right Tools & Profile */}
+            <div className="flex items-center gap-2.5 flex-shrink-0">
+              {/* Saved bookmarks shortcut button */}
+              <button
+                onClick={onToggleSavedFilter}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  showingSavedOnly
+                    ? 'bg-black text-white border-black shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+                title="Filter by saved announcements"
+              >
+                <IconBookmark filled={showingSavedOnly} />
+                <span className="hidden sm:inline">Saved</span>
+                {savedCount > 0 && (
+                  <span className={`px-1.5 py-0.2 text-[10px] font-extrabold rounded-full ${
+                    showingSavedOnly ? 'bg-white text-black' : 'bg-black text-white'
+                  }`}>
+                    {savedCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Bell */}
+              <div className="relative hidden sm:block">
+                <button
+                  type="button"
+                  className="p-2 rounded-xl text-slate-500 hover:text-black hover:bg-slate-100 border border-slate-200 transition-colors"
+                  aria-label="Campus updates"
+                  title="Campus notifications"
+                >
+                  <IconBell />
+                </button>
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EA580C] ring-2 ring-white"></span>
+              </div>
+
+              {/* User Avatar */}
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <a
+                  href="profile.html"
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  title={`Logged in as ${userName}`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-black text-white text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-slate-100">
+                    {userInitial}
+                  </div>
+                  <span className="hidden lg:block text-xs font-bold text-slate-800">{userName}</span>
+                </a>
+              </div>
+
+            </div>
+
+          </div>
+        </header>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       2. FEATURED / SPOTLIGHT HERO CAROUSEL  (Black buttons)
+       ══════════════════════════════════════════════════════════ */
+    function FeaturedHeroCarousel({ events, onSelectEvent, onAddToCalendar }) {
+      if (!events || events.length === 0) return null;
+
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [isPaused, setIsPaused] = useState(false);
+      const touchStartX = useRef(0);
+      const touchEndX = useRef(0);
+
+      const nextSlide = () => {
+        setCurrentIndex((prev) => (prev + 1) % events.length);
+      };
+
+      const prevSlide = () => {
+        setCurrentIndex((prev) => (prev - 1 + events.length) % events.length);
+      };
+
+      useEffect(() => {
+        if (isPaused || events.length <= 1) return;
+        const timer = setInterval(nextSlide, 6000);
+        return () => clearInterval(timer);
+      }, [isPaused, events.length]);
+
+      const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+      };
+
+      const handleTouchEnd = (e) => {
+        touchEndX.current = e.changedTouches[0].clientX;
+        const diff = touchStartX.current - touchEndX.current;
+        if (diff > 50) nextSlide();
+        else if (diff < -50) prevSlide();
+      };
+
+      const current = events[currentIndex];
+      const categoryStyle = CATEGORY_COLORS[current.category] || CATEGORY_COLORS.Hackathon;
+
+      return (
+        <section
+          className="relative w-full rounded-3xl overflow-hidden shadow-xl bg-slate-950 border border-slate-800"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{ minHeight: '340px' }}
+        >
+          {/* Background image & gradient overlay */}
+          <div className="absolute inset-0 z-0">
+            {current.coverPhotoUrl ? (
+              <img
+                src={current.coverPhotoUrl}
+                alt={current.title}
+                className="w-full h-full object-cover transition-transform duration-700 ease-out scale-105"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.style.background = categoryStyle.gradient;
+                }}
+              />
+            ) : (
+              <div className="w-full h-full" style={{ background: categoryStyle.gradient }} />
+            )}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(to top, rgba(15, 23, 42, 0.96) 0%, rgba(15, 23, 42, 0.65) 50%, rgba(15, 23, 42, 0.15) 80%, transparent 100%)'
+              }}
+            />
+          </div>
+
+          {/* Content overlay */}
+          <div className="relative z-10 p-6 sm:p-8 md:p-10 flex flex-col justify-end min-h-[340px] md:min-h-[380px] max-w-4xl">
+            <div className="flex items-center gap-2.5 flex-wrap mb-3">
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-black/60 backdrop-blur-md border border-white/20">
+                {current.scale ? `${current.scale.toUpperCase()} LEVEL` : 'FEATURED SPOTLIGHT'}
+              </span>
+              <span
+                className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white shadow-xs"
+                style={{ backgroundColor: categoryStyle.color }}
+              >
+                {current.category}
+              </span>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight mb-2 line-clamp-2">
+              {current.title}
+            </h2>
+
+            <p className="text-slate-200 text-sm font-semibold flex items-center gap-2 mb-3">
+              <span>{current.clubName}</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-slate-300 font-medium">{current.collegeName}</span>
+            </p>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-white/10">
+              <div className="flex items-center gap-4 text-xs font-medium text-slate-300 flex-wrap">
+                <div className="flex items-center gap-1.5 text-slate-200">
+                  <IconCalendar />
+                  <span>{formatEventDate(current.eventDate)} · {formatTime(current.eventDate)}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-200">
+                  <IconLocation />
+                  <span>{current.venue}</span>
+                </div>
+              </div>
+
+              {/* Black Buttons */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => onAddToCalendar(current)}
+                  className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 border border-white/30"
+                >
+                  <IconCalendar />
+                  <span>Add to Calendar</span>
+                </button>
+                <button
+                  onClick={() => onSelectEvent(current)}
+                  className="btn-black px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide shadow-lg flex items-center gap-2 border border-white/20"
+                >
+                  <span>View Details</span>
+                  <IconArrowRight />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Carousel Arrows */}
+          {events.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-md items-center justify-center transition-all border border-white/20"
+                aria-label="Previous slide"
+              >
+                ‹
+              </button>
+              <button
+                onClick={nextSlide}
+                className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-md items-center justify-center transition-all border border-white/20"
+                aria-label="Next slide"
+              >
+                ›
+              </button>
+            </>
+          )}
+
+          {/* Dot Indicators */}
+          {events.length > 1 && (
+            <div className="absolute bottom-4 right-6 z-20 flex items-center gap-1.5">
+              {events.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RECENT ANNOUNCEMENTS & NOTICES  (Moved from user.html)
+       ══════════════════════════════════════════════════════════ */
+    function RecentNoticesSection({ notices, onSelectNotice }) {
+      if (!notices || notices.length === 0) return null;
+
+      return (
+        <section className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                Recent Announcements
+              </h2>
+              <p className="text-xs text-slate-500">
+                Updates and notices from event organisers.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {notices.map((notice) => (
+              <div
+                key={notice.id}
+                onClick={() => onSelectNotice(notice)}
+                className="clean-card bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-black transition-all cursor-pointer shadow-xs hover:shadow-md flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex justify-between items-start gap-2 mb-2">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors line-clamp-1 flex-1">
+                      {notice.title}
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full flex-shrink-0 border border-slate-200">
+                      {notice.date}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-3">
+                    {notice.message}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                    </svg>
+                    <span className="truncate">{notice.eventName}</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-800 group-hover:underline">Read →</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       3. CATEGORY FILTER CHIPS  (Active filled with category token or black for All)
+       ══════════════════════════════════════════════════════════ */
+    function CategoryChips({ selectedCategory, onSelectCategory, categoryCounts }) {
+      return (
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-2">
+          {ALL_CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat;
+            const styleConfig = CATEGORY_COLORS[cat];
+            const count = categoryCounts[cat] || 0;
+
+            if (cat === 'All') {
+              return (
+                <button
+                  key={cat}
+                  onClick={() => onSelectCategory('All')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                    isActive
+                      ? 'btn-black border-black shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  All Categories
+                  {count > 0 && (
+                    <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={cat}
+                onClick={() => onSelectCategory(cat)}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: styleConfig.color,
+                        borderColor: styleConfig.color,
+                        color: '#FFFFFF'
+                      }
+                    : {}
+                }
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-2 ${
+                  isActive
+                    ? 'shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                {!isActive && (
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: styleConfig.color }}
+                  />
+                )}
+                <span>{cat}</span>
+                {count > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[10px]"
+                    style={
+                      isActive
+                        ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#FFFFFF' }
+                        : { backgroundColor: styleConfig.softBg, color: styleConfig.color }
+                    }
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       4. ANNOUNCEMENT CARD  (Clean Light Theme - Black Buttons, No Purple)
+       Matches the user's requested card layout:
+       [View Details >] (ghost/outline) and [Add to Calendar] (solid black)
+       ══════════════════════════════════════════════════════════ */
+    function AnnouncementCard({ announcement, onSelect, onToggleSave, onAddToCalendar }) {
+      const categoryStyle = CATEGORY_COLORS[announcement.category] || CATEGORY_COLORS.Hackathon;
+      const [imageLoaded, setImageLoaded] = useState(true);
+
+      const statusBadge = announcement.status === 'Happening Now'
+        ? { label: 'Happening Now', dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+        : { label: 'Upcoming', dot: 'bg-slate-400', badge: 'bg-slate-50 text-slate-600 border-slate-200' };
+
+      return (
+        <article
+          onClick={() => onSelect(announcement)}
+          style={{
+            borderColor: categoryStyle.borderTint,
+            borderWidth: '1.5px'
+          }}
+          className="discovery-card cursor-pointer overflow-hidden border shadow-xs hover:shadow-md flex flex-col justify-between group bg-white"
+        >
+          {/* Top: 16:9 Cover Photo */}
+          <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
+            {announcement.coverPhotoUrl && imageLoaded ? (
+              <img
+                src={announcement.coverPhotoUrl}
+                alt={announcement.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                onError={() => setImageLoaded(false)}
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center p-6 text-white font-black text-center text-lg tracking-tight"
+                style={{ background: categoryStyle.gradient }}
+              >
+                <span>{announcement.title}</span>
+              </div>
+            )}
+
+            {/* Category tag pill overlaid on photo's bottom-left corner */}
+            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+              <span
+                className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md backdrop-blur-xs"
+                style={{ backgroundColor: categoryStyle.color }}
+              >
+                {announcement.category}
+              </span>
+            </div>
+
+            {/* Status Pill on top-right corner (from user screenshot) */}
+            <div className="absolute top-3 right-3 z-10">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border backdrop-blur-md bg-white/90 shadow-xs text-slate-800`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
+                <span>{statusBadge.label}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              {/* Event Title */}
+              <h3 className="text-base font-bold text-slate-900 group-hover:text-black transition-colors leading-snug line-clamp-1">
+                {announcement.title}
+              </h3>
+
+              {/* Announcement Preview (2 lines) */}
+              <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mt-2">
+                {announcement.preview || announcement.body}
+              </p>
+
+              {/* Metadata rows with icons matching user screenshot */}
+              <div className="mt-4 space-y-1.5 text-xs text-slate-600">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400"><IconCalendar /></span>
+                  <span className="font-semibold text-slate-800">{formatEventDate(announcement.eventDate)} · {formatTime(announcement.eventDate)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400"><IconLocation /></span>
+                  <span className="line-clamp-1">{announcement.venue}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">🏛️</span>
+                  <span className="text-slate-500 line-clamp-1">{announcement.clubName} · {announcement.collegeName}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Action Row: [Bookmark] [View Details >] and [Add to Calendar] (Black) */}
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 gap-2">
+              <div className="flex items-center gap-2">
+                {/* Bookmark Icon */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSave(announcement.id);
+                  }}
+                  className={`p-2 rounded-xl transition-colors ${
+                    announcement.saved
+                      ? 'text-black bg-slate-100 ring-1 ring-slate-300'
+                      : 'text-slate-400 hover:text-black hover:bg-slate-100'
+                  }`}
+                  title={announcement.saved ? 'Remove from saved' : 'Save bookmark'}
+                  aria-label="Save bookmark"
+                >
+                  <IconBookmark filled={announcement.saved} />
+                </button>
+
+                {/* View Details Ghost Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(announcement);
+                  }}
+                  className="btn-ghost px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"
+                >
+                  <span>View Details</span>
+                  <IconArrowRight />
+                </button>
+              </div>
+
+              {/* Add to Calendar Button (Solid Black - Replaces RSVP / user event) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCalendar(announcement);
+                }}
+                className="btn-black px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 flex-shrink-0"
+                title="Add to personal calendar"
+              >
+                <IconPlus />
+                <span>Add Calendar</span>
+              </button>
+            </div>
+
+          </div>
+        </article>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       5. ANNOUNCEMENT DETAIL MODAL  (Black buttons)
+       ══════════════════════════════════════════════════════════ */
+    function AnnouncementDetailModal({ announcement, onClose, onToggleSave, onShare, onAddToCalendar }) {
+      if (!announcement) return null;
+
+      const categoryStyle = CATEGORY_COLORS[announcement.category] || CATEGORY_COLORS.Hackathon;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto" onClick={onClose}>
+          <div
+            className="relative w-full max-w-2xl bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200 animate-modal my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Cover Header with Photo */}
+            <div className="relative aspect-[21/9] sm:aspect-[16/7] w-full bg-slate-900 overflow-hidden">
+              {announcement.coverPhotoUrl ? (
+                <img
+                  src={announcement.coverPhotoUrl}
+                  alt={announcement.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.style.background = categoryStyle.gradient;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full" style={{ background: categoryStyle.gradient }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
+
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/90 text-white backdrop-blur-md flex items-center justify-center transition-colors border border-white/20"
+                aria-label="Close modal"
+              >
+                <IconClose />
+              </button>
+
+              {/* Category & Scale Overlays */}
+              <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-white shadow-md"
+                    style={{ backgroundColor: categoryStyle.color }}
+                  >
+                    {announcement.category}
+                  </span>
+                  {announcement.scale && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase text-white bg-black/60 backdrop-blur-md border border-white/20">
+                      {announcement.scale} scale
+                    </span>
+                  )}
+                </div>
+                {announcement.postedAt && (
+                  <span className="text-[11px] font-semibold text-slate-300">
+                    Posted {timeAgo(announcement.postedAt)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 space-y-6 max-h-[calc(85vh-200px)] overflow-y-auto">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                  {announcement.title}
+                </h2>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mt-1.5">
+                  <span className="text-slate-900 font-bold">{announcement.clubName}</span>
+                  <span>·</span>
+                  <span>{announcement.collegeName}</span>
+                </div>
+              </div>
+
+              {/* Time & Venue Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700">
+                    <IconCalendar />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Date & Time</span>
+                    <span className="text-xs font-bold text-slate-900 block mt-0.5">
+                      {formatEventDate(announcement.eventDate)}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {formatTime(announcement.eventDate)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700">
+                    <IconLocation />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Venue</span>
+                    <span className="text-xs font-bold text-slate-900 block mt-0.5">
+                      {announcement.venue}
+                    </span>
+                    <span className="text-[11px] text-slate-500">{announcement.collegeName}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Announcement Body Content */}
+              <div className="prose prose-sm text-slate-700 leading-relaxed space-y-3 pt-2 border-t border-slate-100">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Announcement Details</h4>
+                <div className="whitespace-pre-line text-sm text-slate-800 leading-relaxed">
+                  {announcement.body || announcement.preview}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Bar Footer (Black buttons) */}
+            <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {/* Save Toggle Button */}
+                <button
+                  onClick={() => onToggleSave(announcement.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    announcement.saved
+                      ? 'bg-black text-white border-black shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <IconBookmark filled={announcement.saved} />
+                  <span>{announcement.saved ? 'Saved' : 'Save'}</span>
+                </button>
+
+                {/* Share Button */}
+                <button
+                  onClick={() => onShare(announcement)}
+                  className="btn-ghost flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold"
+                >
+                  <IconShare />
+                  <span>Share</span>
+                </button>
+              </div>
+
+              {/* Action Buttons: Add to Calendar & Register */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onAddToCalendar(announcement)}
+                  className="btn-black px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2"
+                >
+                  <IconCalendar />
+                  <span>Add to Calendar</span>
+                </button>
+
+                {announcement.registrationUrl && (
+                  <a
+                    href={announcement.registrationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <span>Register ↗</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       6. CALENDAR SYNC MODAL  (Add all / any campus announcements)
+       ══════════════════════════════════════════════════════════ */
+    function CalendarSyncModal({ events, onClose, onSelectEventCalendar }) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs" onClick={onClose}>
+          <div
+            className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200 animate-modal p-6 sm:p-7 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center">
+                  <IconCalendar />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">Add to Calendar</h3>
+                  <p className="text-xs text-slate-500 font-medium">Sync upcoming campus events with your schedule</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-1 text-slate-400 hover:text-black">
+                <IconClose />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {events.map((evt) => (
+                <div
+                  key={evt.id}
+                  className="p-3 rounded-2xl border border-slate-200 hover:border-black flex items-center justify-between gap-3 transition-colors bg-slate-50/50 hover:bg-white"
+                >
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-slate-900 truncate">{evt.title}</h4>
+                    <p className="text-[11px] text-slate-500 truncate">{formatEventDate(evt.eventDate)} · {evt.venue}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <a
+                      href={buildGoogleCalendarUrl(evt)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-black px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+                    >
+                      Google
+                    </a>
+                    <button
+                      onClick={() => downloadIcsFile(evt)}
+                      className="btn-ghost px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+                      title="Download .ics for Apple/Outlook"
+                    >
+                      .ICS
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-medium">{events.length} events scheduled</span>
+              <button
+                onClick={onClose}
+                className="btn-ghost px-4 py-2 rounded-xl text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SHIMMER SKELETON CARDS
+       ══════════════════════════════════════════════════════════ */
+    function SkeletonCard() {
+      return (
+        <div className="discovery-card overflow-hidden border border-slate-200 bg-white">
+          <div className="aspect-video w-full shimmer-box" />
+          <div className="p-5 space-y-3">
+            <div className="w-1/3 h-3 shimmer-box rounded-md" />
+            <div className="w-4/5 h-5 shimmer-box rounded-md" />
+            <div className="w-1/2 h-3.5 shimmer-box rounded-md" />
+            <div className="space-y-1.5 pt-2">
+              <div className="w-full h-3 shimmer-box rounded-md" />
+              <div className="w-3/4 h-3 shimmer-box rounded-md" />
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div className="w-6 h-6 shimmer-box rounded-md" />
+              <div className="w-24 h-6 shimmer-box rounded-md" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       EMPTY STATE
+       ══════════════════════════════════════════════════════════ */
+    function EmptyState({ category, onResetFilters }) {
+      return (
+        <div className="py-16 px-6 text-center max-w-md mx-auto clean-card bg-white border border-slate-200 my-8">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-black flex items-center justify-center shadow-xs">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <h3 className="text-base font-bold text-slate-900 mb-1">
+            {category && category !== 'All' ? `No ${category} events right now` : 'No announcements found'}
+          </h3>
+          <p className="text-xs text-slate-500 leading-relaxed mb-5">
+            {category && category !== 'All'
+              ? `Check back soon! Campus clubs regularly post new ${category} competitions and workshops.`
+              : "Nothing posted yet that matches your filter. When a club shares an update, it'll show up here."}
+          </p>
+          <button
+            onClick={onResetFilters}
+            className="btn-black px-5 py-2.5 rounded-xl text-xs font-bold shadow-xs"
+          >
+            Show All Announcements
+          </button>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       MAIN STUDENT ANNOUNCEMENTS APPLICATION
+       ══════════════════════════════════════════════════════════ */
+    function StudentAnnouncementsApp() {
+      const [featuredList, setFeaturedList] = useState([]);
+      const [feedList, setFeedList] = useState([]);
+      const [loading, setLoading] = useState(true);
+
+      // Filter & sorting states
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [sortOption, setSortOption] = useState('newest');
+      const [scope, setScope] = useState('all');
+      const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+      // Selected modal & toast state
+      const [activeModalItem, setActiveModalItem] = useState(null);
+      const [showCalendarModal, setShowCalendarModal] = useState(false);
+      const [toastMessage, setToastMessage] = useState(null);
+
+      // Saved state storage sync
+      const [savedIds, setSavedIds] = useState(() => {
+        try {
+          const stored = localStorage.getItem('planova_saved_announcements');
+          return stored ? JSON.parse(stored) : ['ann-roboquest-2026'];
+        } catch {
+          return ['ann-roboquest-2026'];
+        }
+      });
+
+      const showToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(null), 3000);
+      };
+
+      // Load data from backend API with fallback
+      useEffect(() => {
+        let isMounted = true;
+        async function loadData() {
+          setLoading(true);
+          try {
+            const [featRes, feedRes] = await Promise.all([
+              fetch('/api/announcements/featured').catch(() => null),
+              fetch('/api/announcements/feed').catch(() => null)
+            ]);
+
+            if (featRes && featRes.ok) {
+              const featData = await featRes.json();
+              if (isMounted && Array.isArray(featData) && featData.length > 0) {
+                setFeaturedList(featData);
+              } else {
+                setFeaturedList(INITIAL_FEATURED);
+              }
+            } else {
+              setFeaturedList(INITIAL_FEATURED);
+            }
+
+            if (feedRes && feedRes.ok) {
+              const feedData = await feedRes.json();
+              if (isMounted && Array.isArray(feedData) && feedData.length > 0) {
+                setFeedList(feedData);
+              } else {
+                setFeedList(INITIAL_FEED);
+              }
+            } else {
+              setFeedList(INITIAL_FEED);
+            }
+          } catch {
+            if (isMounted) {
+              setFeaturedList(INITIAL_FEATURED);
+              setFeedList(INITIAL_FEED);
+            }
+          } finally {
+            if (isMounted) setLoading(false);
+          }
+        }
+
+        loadData();
+        return () => { isMounted = false; };
+      }, []);
+
+      // Toggle bookmark / save
+      const handleToggleSave = async (id) => {
+        const isCurrentlySaved = savedIds.includes(id);
+        const nextSaved = isCurrentlySaved
+          ? savedIds.filter((item) => item !== id)
+          : [...savedIds, id];
+
+        setSavedIds(nextSaved);
+        try {
+          localStorage.setItem('planova_saved_announcements', JSON.stringify(nextSaved));
+        } catch {}
+
+        setFeedList((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, saved: !isCurrentlySaved } : item))
+        );
+
+        if (activeModalItem && activeModalItem.id === id) {
+          setActiveModalItem((prev) => ({ ...prev, saved: !isCurrentlySaved }));
+        }
+
+        showToast(isCurrentlySaved ? 'Removed from your bookmarks' : '✓ Saved to your bookmarks');
+
+        try {
+          await fetch(`/api/announcements/${id}/save`, { method: 'POST' });
+        } catch {}
+      };
+
+      // Add to calendar action
+      const handleAddToCalendar = (item) => {
+        window.open(buildGoogleCalendarUrl(item), '_blank');
+        showToast('✓ Opened Google Calendar to add event');
+      };
+
+      // Share handler
+      const handleShare = async (item) => {
+        const url = `${window.location.origin}/announcements#${item.id}`;
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: item.title,
+              text: `${item.title} by ${item.clubName}`,
+              url
+            });
+            return;
+          } catch {}
+        }
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast('✓ Link copied to clipboard!');
+        } catch {
+          showToast('Link: ' + url);
+        }
+      };
+
+      // Category counts
+      const categoryCounts = useMemo(() => {
+        const counts = { All: feedList.length };
+        feedList.forEach((item) => {
+          counts[item.category] = (counts[item.category] || 0) + 1;
+        });
+        return counts;
+      }, [feedList]);
+
+      // Filtered & sorted feed
+      const filteredFeed = useMemo(() => {
+        let result = feedList.map((item) => ({
+          ...item,
+          saved: savedIds.includes(item.id)
+        }));
+
+        if (showSavedOnly) {
+          result = result.filter((item) => item.saved);
+        }
+
+        if (selectedCategory !== 'All') {
+          result = result.filter(
+            (item) => (item.category || '').toLowerCase() === selectedCategory.toLowerCase()
+          );
+        }
+
+        if (scope === 'my-clubs') {
+          result = result.filter((item) => item.isMyClub);
+        }
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          result = result.filter(
+            (item) =>
+              (item.title || '').toLowerCase().includes(q) ||
+              (item.clubName || '').toLowerCase().includes(q) ||
+              (item.collegeName || '').toLowerCase().includes(q) ||
+              (item.venue || '').toLowerCase().includes(q) ||
+              (item.category || '').toLowerCase().includes(q)
+          );
+        }
+
+        if (sortOption === 'this_week') {
+          const now = Date.now();
+          const in7Days = now + 7 * 24 * 60 * 60 * 1000;
+          result = result.filter((item) => {
+            const t = new Date(item.eventDate).getTime();
+            return t >= now - 24 * 60 * 60 * 1000 && t <= in7Days;
+          });
+        } else if (sortOption === 'happening_soon') {
+          result.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+        } else {
+          result.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+        }
+
+        return result;
+      }, [feedList, savedIds, selectedCategory, scope, searchQuery, sortOption, showSavedOnly]);
+
+      const handleResetFilters = () => {
+        setSelectedCategory('All');
+        setSearchQuery('');
+        setScope('all');
+        setShowSavedOnly(false);
+        setSortOption('newest');
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+
+          {/* 1. TOP BAR */}
+          <TopBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            savedCount={savedIds.length}
+            onToggleSavedFilter={() => setShowSavedOnly((prev) => !prev)}
+            showingSavedOnly={showSavedOnly}
+            onOpenCalendarSync={() => setShowCalendarModal(true)}
+          />
+
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-8">
+
+            {/* 2. FEATURED / SPOTLIGHT SECTION */}
+            {!searchQuery && selectedCategory === 'All' && !showSavedOnly && scope === 'all' && (
+              <FeaturedHeroCarousel
+                events={featuredList}
+                onSelectEvent={(evt) => {
+                  const matchingFeedItem = feedList.find((item) => item.id === evt.id) || evt;
+                  setActiveModalItem(matchingFeedItem);
+                }}
+                onAddToCalendar={handleAddToCalendar}
+              />
+            )}
+
+            {/* ── Recent Announcements (Moved from user.html) ── */}
+            {!searchQuery && selectedCategory === 'All' && !showSavedOnly && (
+              <RecentNoticesSection
+                notices={RECENT_NOTICES}
+                onSelectNotice={(notice) => {
+                  setActiveModalItem({
+                    id: notice.id,
+                    title: notice.title,
+                    clubName: notice.eventName,
+                    collegeName: 'Campus Organisers',
+                    category: notice.category,
+                    eventDate: notice.date,
+                    venue: 'Campus Arena',
+                    preview: notice.message,
+                    body: notice.message
+                  });
+                }}
+              />
+            )}
+
+            {/* 3. CATEGORY FILTER CHIPS */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    Campus Announcements Feed
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Live discovery wall for hackathons, workshops, and club events across colleges
+                  </p>
+                </div>
+
+                <a
+                  href="announcements.html"
+                  className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 hover:text-black bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+                  title="Switch to Club Admin Announcements"
+                >
+                  <span>Admin Mode</span>
+                  <span className="text-slate-400">→</span>
+                </a>
+              </div>
+
+              <CategoryChips
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                categoryCounts={categoryCounts}
+              />
+            </div>
+
+            {/* 4. SORT / SCOPE ROW */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-200">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                <span>
+                  Showing <strong className="text-slate-900">{filteredFeed.length}</strong> announcements
+                </span>
+                {(selectedCategory !== 'All' || searchQuery || showSavedOnly || scope !== 'all') && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-[11px] font-semibold text-slate-900 hover:underline pl-2 border-l border-slate-200"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Scope Toggle: [All Colleges] [My Clubs] */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                  <button
+                    onClick={() => setScope('all')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      scope === 'all'
+                        ? 'btn-black shadow-xs font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All Colleges
+                  </button>
+                  <button
+                    onClick={() => setScope('my-clubs')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      scope === 'my-clubs'
+                        ? 'btn-black shadow-xs font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    My Clubs
+                  </button>
+                </div>
+
+                {/* Sort Selector */}
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-slate-400 font-semibold hidden sm:inline">Sort:</span>
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="bg-white text-slate-800 font-bold border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-black focus:outline-none cursor-pointer"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="this_week">This Week</option>
+                    <option value="happening_soon">Happening Soon</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. ANNOUNCEMENT POSTER WALL GRID */}
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : filteredFeed.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredFeed.map((ann) => (
+                  <AnnouncementCard
+                    key={ann.id}
+                    announcement={ann}
+                    onSelect={setActiveModalItem}
+                    onToggleSave={handleToggleSave}
+                    onAddToCalendar={handleAddToCalendar}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                category={selectedCategory}
+                onResetFilters={handleResetFilters}
+              />
+            )}
+
+          </main>
+
+          {/* 6. ANNOUNCEMENT DETAIL MODAL */}
+          {activeModalItem && (
+            <AnnouncementDetailModal
+              announcement={activeModalItem}
+              onClose={() => setActiveModalItem(null)}
+              onToggleSave={handleToggleSave}
+              onShare={handleShare}
+              onAddToCalendar={handleAddToCalendar}
+            />
+          )}
+
+          {/* 7. CALENDAR SYNC MODAL */}
+          {showCalendarModal && (
+            <CalendarSyncModal
+              events={feedList}
+              onClose={() => setShowCalendarModal(false)}
+              onSelectEventCalendar={handleAddToCalendar}
+            />
+          )}
+
+          {/* Toast Alert */}
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2.5 border border-slate-700 animate-bounce">
+              <span className="text-emerald-400 font-black">✓</span>
+              <span>{toastMessage}</span>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="border-t border-slate-200 bg-white py-6 mt-12 text-center text-xs text-slate-400 font-medium">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-black">PLANOVA</span>
+                <span>·</span>
+                <span>Campus Club Hub</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <button onClick={() => setShowCalendarModal(true)} className="hover:text-black">Calendar Sync</button>
+                <a href="announcements.html" className="hover:text-black">Admin Announcements</a>
+                <a href="profile.html" className="hover:text-black">Student Profile</a>
+              </div>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    ReactDOM.render(<StudentAnnouncementsApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>

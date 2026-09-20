@@ -102,6 +102,123 @@ async function handleApi(request, response, url, context) {
     return success(response, { id: rsvp.id, eventId: rsvp.eventId }, 201, { message: 'Your RSVP has been recorded.' });
   }
 
+  // Student Announcement Discovery Feed endpoints (accessible to students)
+  if (request.method === 'GET' && pathname === '/api/announcements/featured') {
+    const data = await context.store.read();
+    const announcements = Array.isArray(data.announcements) ? data.announcements : [];
+    const featured = announcements
+      .filter((a) => a.featured || ['national', 'state'].includes(a.scale))
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        clubName: a.clubName || 'Planova Club',
+        collegeName: a.collegeName || 'Campus Central',
+        category: a.category || 'Hackathon',
+        coverPhotoUrl: a.coverPhotoUrl || '',
+        scale: a.scale || 'college',
+        venue: a.venue || 'Campus Auditorium',
+        eventDate: a.eventDate || a.sentAt || new Date().toISOString(),
+        registrationUrl: a.registrationUrl || undefined
+      }));
+    return sendJson(response, 200, featured);
+  }
+
+  if (request.method === 'GET' && pathname === '/api/announcements/feed') {
+    const data = await context.store.read();
+    const announcements = Array.isArray(data.announcements) ? data.announcements : [];
+    const category = url.searchParams.get('category');
+    const scope = url.searchParams.get('scope');
+    const sort = url.searchParams.get('sort');
+    const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+
+    let list = announcements.map((a) => ({
+      id: a.id,
+      eventId: a.eventId || a.id,
+      title: a.title,
+      clubName: a.clubName || 'Planova Club',
+      collegeName: a.collegeName || 'Campus Central',
+      category: a.category || 'Hackathon',
+      coverPhotoUrl: a.coverPhotoUrl || '',
+      preview: a.preview || a.content || '',
+      venue: a.venue || 'Campus',
+      eventDate: a.eventDate || a.sentAt || new Date().toISOString(),
+      postedAt: a.postedAt || a.sentAt || new Date().toISOString(),
+      saved: Boolean(a.saved),
+      scale: a.scale || 'college',
+      isMyClub: Boolean(a.isMyClub)
+    }));
+
+    if (category && category.toLowerCase() !== 'all') {
+      list = list.filter((a) => (a.category || '').toLowerCase() === category.toLowerCase());
+    }
+    if (scope === 'my-clubs') {
+      list = list.filter((a) => a.isMyClub);
+    }
+    if (search) {
+      list = list.filter((a) =>
+        (a.title || '').toLowerCase().includes(search) ||
+        (a.clubName || '').toLowerCase().includes(search) ||
+        (a.collegeName || '').toLowerCase().includes(search) ||
+        (a.venue || '').toLowerCase().includes(search) ||
+        (a.preview || '').toLowerCase().includes(search)
+      );
+    }
+
+    if (sort === 'this-week' || sort === 'this_week') {
+      const now = Date.now();
+      const in7Days = now + 7 * 24 * 60 * 60 * 1000;
+      list = list.filter((a) => {
+        const t = new Date(a.eventDate).getTime();
+        return t >= now - 24 * 60 * 60 * 1000 && t <= in7Days;
+      });
+    } else if (sort === 'happening-soon' || sort === 'happening_soon') {
+      list.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+    } else {
+      // newest
+      list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+    }
+
+    return sendJson(response, 200, list);
+  }
+
+  const saveAnnMatch = pathname.match(/^\/api\/announcements\/([^/]+)\/save$/);
+  if (request.method === 'POST' && saveAnnMatch) {
+    const id = saveAnnMatch[1];
+    let updatedSaved = false;
+    await context.store.update((data) => {
+      const ann = (data.announcements || []).find((candidate) => candidate.id === id);
+      if (!ann) throw error('Announcement not found.', 404);
+      ann.saved = !ann.saved;
+      updatedSaved = ann.saved;
+    });
+    return success(response, { id, saved: updatedSaved }, 200, { message: updatedSaved ? 'Announcement saved.' : 'Announcement removed from saved.' });
+  }
+
+  const singleAnnMatch = pathname.match(/^\/api\/announcements\/([^/]+)$/);
+  if (request.method === 'GET' && singleAnnMatch && !['featured', 'feed'].includes(singleAnnMatch[1])) {
+    const data = await context.store.read();
+    const ann = (data.announcements || []).find((candidate) => candidate.id === singleAnnMatch[1]);
+    if (!ann) return failure(response, 404, 'Announcement not found.');
+    return sendJson(response, 200, {
+      id: ann.id,
+      eventId: ann.eventId || ann.id,
+      title: ann.title,
+      clubName: ann.clubName || 'Planova Club',
+      collegeName: ann.collegeName || 'Campus Central',
+      category: ann.category || 'Hackathon',
+      coverPhotoUrl: ann.coverPhotoUrl || '',
+      preview: ann.preview || ann.content || '',
+      body: ann.body || ann.content || '',
+      venue: ann.venue || 'Campus Auditorium',
+      eventDate: ann.eventDate || ann.sentAt || new Date().toISOString(),
+      postedAt: ann.postedAt || ann.sentAt || new Date().toISOString(),
+      saved: Boolean(ann.saved),
+      scale: ann.scale || 'college',
+      registrationUrl: ann.registrationUrl || undefined,
+      isMyClub: Boolean(ann.isMyClub)
+    });
+  }
+
   // Public authentication endpoints (signup, register, login, bootstrap)
   if (pathname.startsWith('/api/auth/') && ['/api/auth/signup', '/api/auth/register', '/api/auth/login', '/api/auth/bootstrap'].includes(pathname)) {
     return await handleAuthRoutes(request, response, url, context);

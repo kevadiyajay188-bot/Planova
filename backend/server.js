@@ -22,7 +22,10 @@ function runtimeHtml(source, fileName) {
 }
 
 function safeFilePath(frontendDirectory, pathname) {
-  const requested = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  let requested = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  if (requested === 'announcements' || requested === 'announcements/') {
+    requested = 'student-announcements.html';
+  }
   const resolved = path.resolve(frontendDirectory, requested);
   return resolved.startsWith(`${path.resolve(frontendDirectory)}${path.sep}`) || resolved === path.resolve(frontendDirectory) ? resolved : null;
 }
