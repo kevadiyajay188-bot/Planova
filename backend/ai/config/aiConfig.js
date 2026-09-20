@@ -12,7 +12,7 @@ const PROVIDERS = {
 };
 
 function getAiConfig(envConfig = {}) {
-  const provider = (envConfig.aiProvider || process.env.AI_PROVIDER || PROVIDERS.LOCAL).toLowerCase();
+  const provider = (envConfig.aiProvider || process.env.AI_PROVIDER || PROVIDERS.GEMINI).toLowerCase();
   const model = envConfig.aiModel || process.env.AI_MODEL || (provider === PROVIDERS.GEMINI ? 'gemini-1.5-pro' : 'gpt-4o');
   const apiKey = envConfig.aiApiKey || process.env.AI_API_KEY || '';
   const rawAutonomy = (envConfig.aiAutonomy || process.env.AI_AUTONOMY || AUTONOMY_LEVELS.ASK_FOR_RISKY).toUpperCase();

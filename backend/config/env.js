@@ -30,7 +30,7 @@ function getConfig(overrides = {}) {
     tokenTtlHours: numberFromEnv(overrides.tokenTtlHours ?? process.env.TOKEN_TTL_HOURS, 8),
     databaseFile: overrides.databaseFile || path.join(projectRoot, 'backend', 'database', 'data.json'),
     frontendDirectory: overrides.frontendDirectory || projectRoot,
-    aiProvider: overrides.aiProvider || process.env.AI_PROVIDER || 'local',
+    aiProvider: overrides.aiProvider || process.env.AI_PROVIDER || 'gemini',
     aiModel: overrides.aiModel || process.env.AI_MODEL || 'gemini-1.5-pro',
     aiApiKey: overrides.aiApiKey || process.env.AI_API_KEY || '',
     aiAutonomy: overrides.aiAutonomy || process.env.AI_AUTONOMY || 'ASK_FOR_RISKY',

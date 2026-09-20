@@ -49,10 +49,18 @@ class AiModelService {
   }
 
   async callGemini({ prompt, systemPrompt }) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': this.apiKey
+    };
+    if (this.apiKey.startsWith('AQ.') || this.apiKey.startsWith('ya29.')) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         contents: [
           ...(systemPrompt ? [{ role: 'user', parts: [{ text: `System Instruction: ${systemPrompt}` }] }] : []),

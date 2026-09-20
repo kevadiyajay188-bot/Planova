@@ -564,7 +564,7 @@
     /* ══════════════════════════════════════════════════════════
        1. TOP BAR  (No Purple - Black Buttons & "Add to Calendar" in place of user/calendar)
        ══════════════════════════════════════════════════════════ */
-    function TopBar({ searchQuery, onSearchChange, savedCount, onToggleSavedFilter, showingSavedOnly, onOpenCalendarSync }) {
+    function TopBar({ searchQuery, onSearchChange, savedCount, onToggleSavedFilter, showingSavedOnly, onOpenCalendarSync, onOpenCopilot }) {
       const authUser = window.PlanovaAuth ? window.PlanovaAuth.user() : null;
       const userName = authUser?.name || authUser?.username || 'Alex Green';
       const userInitial = (userName[0] || 'A').toUpperCase();
@@ -608,6 +608,15 @@
                 <IconCalendar />
                 <span className="hidden md:inline">Add to Calendar</span>
                 <span className="md:hidden">Calendar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onOpenCopilot}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition-colors"
+                title="Ask Planova AI"
+              >
+                <span>✦ Ask Planova AI</span>
               </button>
             </div>
 
@@ -1466,6 +1475,37 @@
         setTimeout(() => setToastMessage(null), 3000);
       };
 
+      // AI Copilot state
+      const [copilotOpen, setCopilotOpen] = useState(false);
+      const [copilotQuery, setCopilotQuery] = useState('');
+      const [copilotLoading, setCopilotLoading] = useState(false);
+      const [copilotMessages, setCopilotMessages] = useState([
+        { role: 'ai', text: 'Hello! I am Planova AI Copilot powered by Gemini. I can help you discover upcoming campus hackathons, workshops, or answer questions about clubs and schedules. How can I assist you today?' }
+      ]);
+
+      const handleCopilotSubmit = (e) => {
+        e.preventDefault();
+        if (!copilotQuery.trim() || copilotLoading) return;
+        const msg = copilotQuery;
+        setCopilotMessages(m => [...m, { role: 'user', text: msg }]);
+        setCopilotQuery('');
+        setCopilotLoading(true);
+        fetch('/api/ai/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg })
+        })
+          .then(r => r.json())
+          .then(data => {
+            const reply = data.text || data.response || 'Processed with Planova Gemini AI.';
+            setCopilotMessages(m => [...m, { role: 'ai', text: reply }]);
+          })
+          .catch(() => {
+            setCopilotMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+          })
+          .finally(() => setCopilotLoading(false));
+      };
+
       // Load data from backend API with fallback
       useEffect(() => {
         let isMounted = true;
@@ -1643,6 +1683,7 @@
             onToggleSavedFilter={() => setShowSavedOnly((prev) => !prev)}
             showingSavedOnly={showSavedOnly}
             onOpenCalendarSync={() => setShowCalendarModal(true)}
+            onOpenCopilot={() => setCopilotOpen(true)}
           />
 
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-8">
@@ -1818,6 +1859,76 @@
             <div className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2.5 border border-slate-700 animate-bounce">
               <span className="text-emerald-400 font-black">✓</span>
               <span>{toastMessage}</span>
+            </div>
+          )}
+
+          {/* Floating Ask Planova Button */}
+          <div className="fixed bottom-6 right-6 z-40">
+            <button
+              onClick={() => setCopilotOpen(true)}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-black hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xl border border-slate-800 cursor-pointer group"
+            >
+              <span>✦ Ask Planova AI</span>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+              </span>
+            </button>
+          </div>
+
+          {/* Slide-over Copilot Drawer */}
+          {copilotOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden modal-backdrop">
+              <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={() => setCopilotOpen(false)}></div>
+              <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                <div className="w-screen max-w-md bg-white shadow-2xl border-l border-[#E2E8F0] flex flex-col justify-between modal-panel">
+                  <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-black text-white">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-black">✦</span>
+                      <div>
+                        <h3 className="text-sm font-bold">Planova AI Copilot</h3>
+                        <p className="text-[10px] text-slate-300">Powered by Gemini · Campus Intelligence</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setCopilotOpen(false)} className="text-slate-300 hover:text-white font-bold">✕</button>
+                  </div>
+
+                  <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
+                    {copilotMessages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-sm'
+                        }`}>
+                          {m.text}
+                        </div>
+                      </div>
+                    ))}
+                    {copilotLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-bl-none shadow-sm px-4 py-3 text-xs text-slate-400 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span>
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleCopilotSubmit} className="p-4 border-t border-slate-200 bg-white flex gap-2">
+                    <input
+                      type="text"
+                      value={copilotQuery}
+                      onChange={e => setCopilotQuery(e.target.value)}
+                      placeholder="Ask Planova AI about events..."
+                      className="flex-1 px-3.5 py-2.5 text-xs border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-slate-900"
+                      disabled={copilotLoading}
+                    />
+                    <button type="submit" className="px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-bold rounded-xl transition-colors shadow-xs text-xs" disabled={copilotLoading}>
+                      {copilotLoading ? '…' : 'Send'}
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           )}
 
