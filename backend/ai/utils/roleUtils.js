@@ -57,7 +57,10 @@ function getToolsForRole(role) {
       'get_event_budget',
       'find_similar_events',
       'get_event_history',
-      'generate_event_plan'
+      'generate_event_plan',
+      'update_deadline',
+      'delete_event',
+      'create_meeting_action'
     ];
   }
   if (normalized === 'volunteer') {

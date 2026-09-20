@@ -17,6 +17,54 @@ class LocalIntelligenceEngine {
     const role = (context.role || 'student').toLowerCase();
 
     // ==========================================
+    // PRIVILEGED / OPERATIONAL INTENT DETECTION
+    // (Checked first so RBAC security gates in the orchestrator can enforce permissions)
+    // ==========================================
+    if (/delete\s+task|remove\s+task/i.test(text)) {
+      return {
+        action: 'delete_task',
+        toolName: 'delete_task',
+        params: {
+          taskId: this.extractTaskId(text) || 'task-101'
+        }
+      };
+    }
+
+    if (/delete\s+event|remove\s+event/i.test(text)) {
+      return {
+        action: 'delete_event',
+        toolName: 'delete_event',
+        params: {
+          eventId: this.extractEventId(text) || context.currentEventId || 'evt-technova'
+        }
+      };
+    }
+
+    if (/rebalance|overload(ed)?|redistribute\s+tasks?|workload/i.test(text)) {
+      return {
+        action: 'rebalance_workload',
+        toolName: 'rebalance_workload',
+        params: {
+          threshold: 6,
+          eventId: context.currentEventId || 'evt-technova'
+        }
+      };
+    }
+
+    if (/delay|deadline|postpone|extend/i.test(text)) {
+      const daysMatch = text.match(/by\s+([0-9]+)\s+days?/i) || text.match(/([0-9]+)\s+days?/i);
+      const newDeadlineDays = daysMatch ? parseInt(daysMatch[1], 10) : 7;
+      return {
+        action: 'update_deadline',
+        toolName: 'update_deadline',
+        params: {
+          taskId: this.extractTaskId(text) || context.currentTaskId || 'task-doing-1',
+          newDeadlineDays
+        }
+      };
+    }
+
+    // ==========================================
     // 1. STUDENT ROLE (Campus discovery only)
     // ==========================================
     if (role === 'student') {
@@ -157,17 +205,6 @@ class LocalIntelligenceEngine {
       };
     }
 
-    if (/rebalance|overload(ed)?|redistribute\s+tasks?|workload/i.test(text)) {
-      return {
-        action: 'rebalance_workload',
-        toolName: 'rebalance_workload',
-        params: {
-          threshold: 6,
-          eventId: context.currentEventId || 'evt-technova'
-        }
-      };
-    }
-
     if (/generate\s+(an?\s+)?(event\s+)?plan|create\s+(an?\s+)?plan|plan\s+for/i.test(text)) {
       const eventName = this.extractEventName(text) || context.currentEventName || 'New Event';
       const eventType = this.extractEventType(text) || context.currentEventType || 'Hackathon';
@@ -220,17 +257,6 @@ class LocalIntelligenceEngine {
       };
     }
 
-    if (/delete\s+task|remove\s+task/i.test(text)) {
-      const match = text.match(/(?:task\s+)?([a-z0-9_-]+)/i);
-      return {
-        action: 'delete_task',
-        toolName: 'delete_task',
-        params: {
-          taskId: this.extractTaskId(text) || 'task-done-1'
-        }
-      };
-    }
-
     if (/assign\s+task|assign\s+volunteer/i.test(text)) {
       return {
         action: 'assign_task',
@@ -252,17 +278,6 @@ class LocalIntelligenceEngine {
           priority: 'High',
           daysFromNow: 5,
           eventId: context.currentEventId || 'evt-technova'
-        }
-      };
-    }
-
-    if (/delay|deadline|postpone|extend/i.test(text)) {
-      return {
-        action: 'update_deadline',
-        toolName: 'update_deadline',
-        params: {
-          taskId: context.currentTaskId || 'task-doing-1',
-          newDeadlineDays: 7
         }
       };
     }
@@ -358,6 +373,11 @@ class LocalIntelligenceEngine {
 
   extractVolunteerMention(text) {
     const match = text.match(/(vol-[a-z0-9_-]+)/i);
+    return match ? match[1] : null;
+  }
+
+  extractEventId(text) {
+    const match = text.match(/(evt-[a-z0-9_-]+)/i);
     return match ? match[1] : null;
   }
 }

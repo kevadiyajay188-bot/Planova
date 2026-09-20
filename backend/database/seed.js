@@ -5,13 +5,66 @@ function isoDaysFromNow(days, hour = 10) {
   return date.toISOString();
 }
 
-function createSeedData() {
+function createSeedData(options = {}) {
   const now = new Date().toISOString();
+  const isTest = Boolean(process.env.NODE_TEST_CONTEXT);
+  const includeDemoUsers = options.includeDemoUsers ?? (!isTest);
+  const demoUsers = includeDemoUsers ? [
+    {
+      id: 'usr-admin-1',
+      name: 'President Admin',
+      email: 'admin@campus.edu',
+      username: 'AIAdmin',
+      role: 'PRESIDENT',
+      status: 'ACTIVE',
+      passwordHash: 'scrypt$16384$8$1$ogJIyQQLjl-GqD4e2yjO4w$mEY6k9ScUsynm-zzIiy6qKLUeN6U0BL830C163xevXhj4GKU6yYOux_b2d6GQLMrhAoQhsZyvvs5kNVRC5d0sg',
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: 'usr-lead-1',
+      name: 'Alex Rivera',
+      email: 'lead@campus.edu',
+      username: 'TeamLead',
+      role: 'TEAM_LEAD',
+      status: 'ACTIVE',
+      passwordHash: 'scrypt$16384$8$1$ogJIyQQLjl-GqD4e2yjO4w$mEY6k9ScUsynm-zzIiy6qKLUeN6U0BL830C163xevXhj4GKU6yYOux_b2d6GQLMrhAoQhsZyvvs5kNVRC5d0sg',
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: 'usr-vol-1',
+      name: 'Priya Patel',
+      email: 'volunteer@campus.edu',
+      username: 'PriyaPatel',
+      role: 'VOLUNTEER',
+      status: 'ACTIVE',
+      passwordHash: 'scrypt$16384$8$1$ogJIyQQLjl-GqD4e2yjO4w$mEY6k9ScUsynm-zzIiy6qKLUeN6U0BL830C163xevXhj4GKU6yYOux_b2d6GQLMrhAoQhsZyvvs5kNVRC5d0sg',
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: 'usr-student-1',
+      name: 'Campus Student',
+      email: 'student@campus.edu',
+      username: 'StudentUser',
+      role: 'WEB_USER',
+      status: 'ACTIVE',
+      passwordHash: 'scrypt$16384$8$1$ogJIyQQLjl-GqD4e2yjO4w$mEY6k9ScUsynm-zzIiy6qKLUeN6U0BL830C163xevXhj4GKU6yYOux_b2d6GQLMrhAoQhsZyvvs5kNVRC5d0sg',
+      createdAt: now,
+      updatedAt: now
+    }
+  ] : [];
+
   return {
     version: 2,
+<<<<<<< HEAD
     clubs: [],
     memberships: [],
     users: [],
+=======
+    users: demoUsers,
+>>>>>>> a7e920041e38a5599c89fd9e05b9c3c5f39f2b6b
     sessions: [],
     rsvps: [],
     settings: {},

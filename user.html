@@ -1201,6 +1201,7 @@
         setTimeout(() => setToastMsg(''), 4000);
       };
 
+<<<<<<< HEAD
       const handleCancelRsvp = async (event) => {
         try {
           const response = await fetch(`/api/events/${event.id}/rsvp`, { method: 'DELETE' });
@@ -1218,6 +1219,194 @@
           setToastMsg(error.message || 'Could not cancel your RSVP.');
         }
       };
+=======
+    /* ══════════════════════════════════════════════════════════
+       COLORFUL RICH TEXT PARSER
+       ══════════════════════════════════════════════════════════ */
+    function renderColorfulText(text) {
+      if (!text) return null;
+      const parts = text.split(/(\*\*.*?\*\*|".*?")/g);
+      return parts.map((part, idx) => {
+        if (!part) return null;
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const content = part.slice(2, -2);
+          const lower = content.toLowerCase();
+          if (lower.includes('sep') || lower.includes('oct') || lower.includes('nov') || lower.includes('am') || lower.includes('pm') || lower.includes('schedule') || lower.includes('live') || lower.includes('upcoming')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('hall') || lower.includes('auditorium') || lower.includes('lab') || lower.includes('center') || lower.includes('room') || lower.includes('venue')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('rsvp') || lower.includes('ticket') || lower.includes('confirmed') || lower.includes('register')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-indigo-100 text-indigo-950 border border-indigo-300 shadow-2xs">
+              {content}
+            </span>
+          );
+        } else if (part.startsWith('"') && part.endsWith('"')) {
+          const quote = part.slice(1, -1);
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 italic">
+              "{quote}"
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       STUDENT AI CHAT BUBBLE (Multi-Block & Colorful)
+       ══════════════════════════════════════════════════════════ */
+    function UserAiBubble({ msg }) {
+      if (msg.role === 'user') {
+        return (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-2xl rounded-br-none p-3.5 text-xs font-semibold bg-black text-white shadow-md">
+              {msg.text}
+            </div>
+          </div>
+        );
+      }
+
+      const raw = msg.text || '';
+      const lower = raw.toLowerCase();
+
+      const isSchedule = lower.includes('scheduled') || lower.includes('date:') || lower.includes('time:') || lower.includes('am') || lower.includes('pm');
+      const isVenue = lower.includes('held at') || lower.includes('venue:') || lower.includes('auditorium');
+      const isRsvp = lower.includes('rsvp') || lower.includes('reserve a spot') || lower.includes('ticket');
+      const isList = raw.includes('•');
+
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[92%] space-y-2">
+            {/* BLOCK 1: CATEGORY STATUS PILL */}
+            <div className="flex items-center gap-1.5">
+              {isSchedule && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span>📅 Event Schedule & Timing</span>
+                </span>
+              )}
+              {isVenue && !isSchedule && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-800 border border-cyan-200">
+                  <span>📍 Campus Venue & Wayfinding</span>
+                </span>
+              )}
+              {isRsvp && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                  <span>🎟️ Spot Reservation & RSVP</span>
+                </span>
+              )}
+              {isList && !isSchedule && !isRsvp && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  <span>🌟 Featured Campus Events</span>
+                </span>
+              )}
+              {!isSchedule && !isVenue && !isRsvp && !isList && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                  <span className="text-indigo-600">✦</span>
+                  <span>Planova Assistant</span>
+                </span>
+              )}
+            </div>
+
+            {/* BLOCK 2: HERO CARD IF BULLET LIST */}
+            {isList ? (
+              <div className="space-y-1.5">
+                {raw.split('\n').filter(line => line.trim().length > 0).map((line, lIdx) => {
+                  if (line.trim().startsWith('•')) {
+                    return (
+                      <div key={lIdx} className="bg-white border-l-4 border-indigo-500 border border-slate-200 rounded-xl p-2.5 text-xs shadow-2xs">
+                        {renderColorfulText(line)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={lIdx} className="bg-white border border-[#E2E8F0] text-slate-800 rounded-xl p-2.5 text-xs leading-relaxed">
+                      {renderColorfulText(line)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* BLOCK 3: FORMATTED NARRATIVE */
+              <div className="bg-white border border-[#E2E8F0] text-slate-900 rounded-2xl rounded-bl-none shadow-xs p-3.5 text-xs leading-relaxed">
+                {renderColorfulText(raw)}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function generateClientCopilotReply(rawQuery, eventsList = [], user = null) {
+        const q = String(rawQuery || '').toLowerCase().trim();
+        const events = Array.isArray(eventsList) ? eventsList : [];
+
+        // 1. Specific event inquiries
+        const matchedEvent = events.find(ev =>
+          q.includes(ev.name.toLowerCase()) ||
+          q.includes(ev.id.toLowerCase()) ||
+          (ev.tags && ev.tags.some(t => q.includes(t.toLowerCase()))) ||
+          (q.includes('hackathon') && ev.type === 'Hackathon') ||
+          (q.includes('robot') && ev.type === 'Robotics') ||
+          (q.includes('design') && ev.type === 'Workshop') ||
+          (q.includes('startup') && ev.type === 'Summit') ||
+          (q.includes('coding') && ev.type === 'Contest') ||
+          (q.includes('cultural') && ev.type === 'Cultural')
+        );
+
+        if (matchedEvent) {
+          if (q.includes('when') || q.includes('date') || q.includes('time') || q.includes('schedule')) {
+            return `📅 **${matchedEvent.name}** is scheduled for **${matchedEvent.date}** at **${matchedEvent.time}** in **${matchedEvent.venue}**. Status: ${matchedEvent.status === 'in_progress' ? '🟢 Live / In Progress' : '🔵 Upcoming'}.`;
+          }
+          if (q.includes('where') || q.includes('venue') || q.includes('location') || q.includes('room')) {
+            return `📍 **${matchedEvent.name}** will be held at **${matchedEvent.venue}**. Organized by **${matchedEvent.organizer}**.`;
+          }
+          if (q.includes('register') || q.includes('rsvp') || q.includes('join') || q.includes('ticket')) {
+            return `🎟️ You can reserve a spot for **${matchedEvent.name}** by clicking **"RSVP Now"** on the event card! Capacity: ${matchedEvent.rsvpCount}/${matchedEvent.capacity} confirmed.`;
+          }
+          if (q.includes('rule') || q.includes('requirement') || q.includes('info') || q.includes('guideline')) {
+            return `ℹ️ **Important notes for ${matchedEvent.name}**:\n${matchedEvent.importantInfo || matchedEvent.description}`;
+          }
+          return `✨ **${matchedEvent.name}** (${matchedEvent.type})\n📅 Date: ${matchedEvent.date} · ${matchedEvent.time}\n📍 Venue: ${matchedEvent.venue}\n👥 Organizer: ${matchedEvent.organizer}\n\n${matchedEvent.description}\n\n💡 Click "RSVP Now" on this card to reserve your pass!`;
+        }
+
+        // 2. Listing upcoming events
+        if (q.includes('event') || q.includes('upcoming') || q.includes('browse') || q.includes('happening') || q.includes('what can i') || q.includes('list')) {
+          const upcomingList = events.slice(0, 5).map(e => `• **${e.name}** (${e.date} @ ${e.venue})`).join('\n');
+          return `Here are the top campus events happening this month:\n\n${upcomingList}\n\nAsk me about any event's venue, timings, or how to register!`;
+        }
+
+        // 3. User RSVPs
+        if (q.includes('my rsvp') || q.includes('registered') || q.includes('my ticket') || q.includes('status')) {
+          return `You can check your confirmed spots in the **My RSVP Status** section below. To join a new event, simply click **RSVP Now** on any card.`;
+        }
+
+        // 4. Greetings
+        if (q.startsWith('hi') || q.startsWith('hello') || q.startsWith('hey') || q === 'help') {
+          const name = user?.name || user?.username || 'there';
+          return `Hello ${name}! 👋 I am your Planova AI Copilot.\n\nYou can ask me:\n• "When is TechNova Hackathon?"\n• "Where is the UI/UX Design Sprint?"\n• "List all upcoming events"\n• "How do I RSVP?"\n\nHow can I help you today?`;
+        }
+
+        // 5. General intelligent response
+        return `I have access to details on all **${events.length} campus events** currently active, including dates, venues, schedules, rules, and registrations. Ask me about TechNova, RoboQuest, DesignSprint, or any campus activity!`;
+      }
+>>>>>>> a7e920041e38a5599c89fd9e05b9c3c5f39f2b6b
 
       const handleCopilotSubmit = (e) => {
         e.preventDefault();
@@ -1226,18 +1415,28 @@
         setMessages(m => [...m, { role: 'user', text: msg }]);
         setQuery('');
         setCopilotLoading(true);
-        fetch('/api/ai/copilot', {
+
+        const apiBase = (window.location.protocol === 'file:' || !window.location.host.includes('3000')) ? 'http://localhost:3000' : '';
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        fetch(apiBase + '/api/ai/copilot', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ message: msg })
         })
-          .then(r => r.json())
+          .then(r => {
+            if (!r.ok) throw new Error('Status ' + r.status);
+            return r.json();
+          })
           .then(data => {
             const reply = data.text || data.response || 'Done.';
             setMessages(m => [...m, { role: 'ai', text: reply }]);
           })
           .catch(() => {
-            setMessages(m => [...m, { role: 'ai', text: 'AI Copilot is momentarily unavailable. Please try again.' }]);
+            const fallbackReply = generateClientCopilotReply(msg, INITIAL_EVENTS, currentUser);
+            setMessages(m => [...m, { role: 'ai', text: fallbackReply }]);
           })
           .finally(() => setCopilotLoading(false));
       };
@@ -1342,13 +1541,7 @@
 
                   <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
                     {messages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
-                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-sm'
-                        }`}>
-                          {m.text}
-                        </div>
-                      </div>
+                      <UserAiBubble key={i} msg={m} />
                     ))}
                     {copilotLoading && (
                       <div className="flex justify-start">

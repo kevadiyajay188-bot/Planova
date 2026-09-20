@@ -551,13 +551,24 @@ class ToolRegistry {
         const threshold = Number(params.threshold) || 6;
         const result = await this.volunteerService.rebalanceWorkload({ threshold });
 
-        if (!params.confirm || !result.needed || !result.rebalancingPlan.length) {
+        if (!params.confirm) {
           return {
             success: true,
             preview: true,
             needed: result.needed,
             message: result.message || `Identified ${result.rebalancingPlan.length} task moves to balance team workload.`,
             rebalancingPlan: result.rebalancingPlan
+          };
+        }
+
+        if (!result.needed || !result.rebalancingPlan.length) {
+          return {
+            success: true,
+            applied: true,
+            rebalanced: true,
+            needed: false,
+            message: result.message || 'All club volunteers are currently operating within safe workload limits.',
+            moves: []
           };
         }
 
@@ -593,6 +604,7 @@ class ToolRegistry {
         return {
           success: true,
           applied: true,
+          rebalanced: true,
           message: `Successfully rebalanced ${movedTasks.length} tasks across volunteers.`,
           moves: movedTasks,
           actionId: log.actionId

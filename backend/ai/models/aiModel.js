@@ -17,14 +17,19 @@ class AiModelService {
     // If configured with an external provider and API key, call provider; otherwise use local engine.
     if (this.apiKey && this.provider !== PROVIDERS.LOCAL) {
       try {
+        let externalRes = null;
         if (this.provider === PROVIDERS.GEMINI) {
-          return await this.callGemini({ prompt, systemPrompt, tools, context });
+          externalRes = await this.callGemini({ prompt, systemPrompt, tools, context });
+        } else if (this.provider === PROVIDERS.OPENAI) {
+          externalRes = await this.callOpenAi({ prompt, systemPrompt });
+        } else if (this.provider === PROVIDERS.CLAUDE) {
+          externalRes = await this.callClaude({ prompt, systemPrompt });
         }
-        if (this.provider === PROVIDERS.OPENAI) {
-          return await this.callOpenAi({ prompt, systemPrompt });
-        }
-        if (this.provider === PROVIDERS.CLAUDE) {
-          return await this.callClaude({ prompt, systemPrompt });
+        if (externalRes) {
+          if (externalRes.toolCall) return externalRes;
+          const localFallback = this.generateWithLocalEngine({ prompt, context });
+          if (localFallback.toolCall) return localFallback;
+          return externalRes;
         }
       } catch (error) {
         console.warn(`[AI Model] ${this.provider} call failed (${error.message}). Falling back to Local Intelligence Engine.`);
