@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 /**
  * MyTasks Component — Planova Volunteer View
@@ -201,6 +201,254 @@ const INITIAL_SHIFTS = [
   }
 ];
 
+/* ══════════════════════════════════════════════════════════
+   COLORFUL RICH TEXT PARSER
+   ══════════════════════════════════════════════════════════ */
+function renderColorfulText(text) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*|".*?")/g);
+  return parts.map((part, idx) => {
+    if (!part) return null;
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const content = part.slice(2, -2);
+      const lower = content.toLowerCase();
+      if (lower.includes('sep') || lower.includes('tomorrow') || lower.includes('today') || lower.includes('am') || lower.includes('pm') || lower.includes('shift') || lower.includes('hours') || lower.includes('window')) {
+        return (
+          <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-emerald-100/90 text-emerald-950 border border-emerald-300 shadow-xs">
+            {content}
+          </span>
+        );
+      }
+      if (lower.includes('entrance') || lower.includes('desk') || lower.includes('hall') || lower.includes('auditorium') || lower.includes('gate') || lower.includes('station') || lower.includes('location')) {
+        return (
+          <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-cyan-100/90 text-cyan-950 border border-cyan-300 shadow-xs">
+            {content}
+          </span>
+        );
+      }
+      if (lower.includes('overdue') || lower.includes('risk') || lower.includes('restricted') || lower.includes('blocked') || lower.includes('critical') || lower.includes('notice')) {
+        return (
+          <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-rose-100/90 text-rose-950 border border-rose-300 shadow-xs">
+            {content}
+          </span>
+        );
+      }
+      if (lower.includes('task') || lower.includes('technova') || lower.includes('priority') || lower.includes('due') || lower.includes('completed')) {
+        return (
+          <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-indigo-100/90 text-indigo-950 border border-indigo-300 shadow-xs">
+            {content}
+          </span>
+        );
+      }
+      return (
+        <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-extrabold bg-slate-200/90 text-slate-900 border border-slate-300">
+          {content}
+        </span>
+      );
+    } else if (part.startsWith('"') && part.endsWith('"')) {
+      const quote = part.slice(1, -1);
+      return (
+        <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 italic shadow-xs">
+          "{quote}"
+        </span>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   STRUCTURED MULTI-BLOCK AI RESPONSE BUBBLE
+   ══════════════════════════════════════════════════════════ */
+function AiMessageBubble({ msg, onAction }) {
+  if (msg.sender === 'user') {
+    return (
+      <div className="flex justify-end">
+        <div className="p-3 rounded-2xl rounded-br-sm text-xs font-semibold bg-slate-950 text-white ml-8 shadow-md">
+          {msg.text}
+        </div>
+      </div>
+    );
+  }
+
+  const raw = msg.text || '';
+  const lower = raw.toLowerCase();
+
+  // Detect Intent
+  const isShift = lower.includes('shift') || lower.includes('registration desk 2') || (lower.includes('tomorrow') && lower.includes('9:00 am'));
+  const isTasksSchedule = lower.includes('open tasks') || lower.includes('due today') || lower.includes('highest priority') || (lower.includes('priority today') && lower.includes('technova'));
+  const isLocation = lower.includes('auditorium hall b') || lower.includes('meal wristbands') || lower.includes('check-in and briefing');
+  const isRestricted = lower.includes('volunteer access notice') || lower.includes('restricted to the executive president');
+  const isActionDone = lower.includes('marked') && lower.includes('completed');
+
+  return (
+    <div className="mr-3 space-y-2">
+      {/* BLOCK 1: CATEGORY STATUS PILL */}
+      <div className="flex items-center gap-1.5">
+        {isShift && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Next Shift Scheduled</span>
+          </span>
+        )}
+        {isTasksSchedule && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-xs">
+            <span className="text-indigo-600">📋</span>
+            <span>Personal Task Intelligence</span>
+          </span>
+        )}
+        {isLocation && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200 shadow-xs">
+            <span>📍 Campus Check-in & Directions</span>
+          </span>
+        )}
+        {isRestricted && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-50 text-rose-800 border border-rose-200 shadow-xs">
+            <span>🔒 Role Security Notice</span>
+          </span>
+        )}
+        {isActionDone && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200 shadow-xs">
+            <span>✨ Action Executed</span>
+          </span>
+        )}
+        {!isShift && !isTasksSchedule && !isLocation && !isRestricted && !isActionDone && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-cyan-50 text-cyan-900 border border-cyan-200 shadow-xs">
+            <span className="text-cyan-600">✦</span>
+            <span>Planova Intelligence</span>
+          </span>
+        )}
+      </div>
+
+      {/* BLOCK 2: HERO HIGHLIGHT CARD */}
+      {isShift && (
+        <div className="rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-white border-2 border-emerald-200 p-3.5 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
+              <span className="text-base">📅</span>
+              <span>Tomorrow · Sep 20, 2026</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white uppercase tracking-wider shadow-xs">
+              In 14 Hours
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div className="bg-white/95 rounded-xl p-2.5 border border-emerald-200 shadow-xs space-y-0.5">
+              <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">⏰ Shift Window</span>
+              <span className="text-xs font-black text-slate-900">9:00 AM – 1:00 PM</span>
+            </div>
+            <div className="bg-white/95 rounded-xl p-2.5 border border-emerald-200 shadow-xs space-y-0.5">
+              <span className="text-[10px] font-extrabold text-teal-700 uppercase tracking-wider block">🏷️ Station Assignment</span>
+              <span className="text-xs font-black text-slate-900">Check-in & Badges</span>
+            </div>
+          </div>
+
+          <div className="bg-white/95 rounded-xl p-2.5 border border-emerald-200 shadow-xs flex items-center gap-2">
+            <span className="text-emerald-600 text-base">📍</span>
+            <div>
+              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">Assigned Location</span>
+              <span className="text-xs font-bold text-slate-900">Main Entrance & Registration Desk 2</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTasksSchedule && (
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-white border-2 border-indigo-200 p-3.5 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs shadow-xs flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>6 Open Tasks</span>
+            </span>
+            <span className="px-2.5 py-1 rounded-xl bg-violet-100 text-violet-900 font-extrabold text-xs border border-violet-200">
+              🎪 TechNova 2026
+            </span>
+          </div>
+
+          <div className="bg-white/95 border-2 border-rose-200 rounded-xl p-3 space-y-1.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-black text-[10px] uppercase tracking-wider">
+                🚨 Top Priority Today
+              </span>
+              <span className="text-[10px] font-extrabold text-slate-400">P1 · Gate 2</span>
+            </div>
+            <p className="font-extrabold text-slate-900 text-xs leading-snug">
+              Set up volunteer check-in signage and name badges at Gate 2
+            </p>
+            {onAction && (
+              <div className="pt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAction('Mark check-in signage done')}
+                  className="px-2.5 py-1 rounded-lg bg-black hover:bg-slate-800 text-white text-[10px] font-black flex items-center gap-1 shadow-xs transition-colors"
+                >
+                  <span>✓</span>
+                  <span>Mark Done</span>
+                </button>
+                <span className="text-[10px] text-slate-500 font-semibold">Signage stand is ready</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isLocation && (
+        <div className="rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50 to-white border-2 border-amber-200 p-3.5 space-y-2.5 shadow-sm">
+          <div className="bg-white/95 rounded-xl p-2.5 border border-amber-200 shadow-xs flex items-start gap-2.5">
+            <span className="text-base text-amber-600">🏢</span>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase text-amber-800 block">Briefing & Radio Allocation</span>
+              <span className="text-xs font-bold text-slate-900">Auditorium Hall B · 5:00 PM</span>
+            </div>
+          </div>
+          <div className="bg-white/95 rounded-xl p-2.5 border border-emerald-200 shadow-xs flex items-start gap-2.5">
+            <span className="text-base text-emerald-600">🍱</span>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase text-emerald-800 block">Meal Wristbands & Badges</span>
+              <span className="text-xs font-bold text-slate-900">Desk 3 behind the main stage</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRestricted && (
+        <div className="rounded-2xl bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-200 p-3.5 space-y-2.5 shadow-sm">
+          <div className="flex items-start gap-2 text-xs text-rose-900 font-bold leading-relaxed">
+            <span className="text-base text-rose-600 flex-shrink-0">⚠️</span>
+            <span>
+              Administrative tools (reassigning members, club budgets, or sending campus broadcasts) are restricted to the <strong className="text-rose-950 underline decoration-rose-300">Executive President</strong>.
+            </span>
+          </div>
+          <div className="bg-white/90 rounded-xl p-2.5 border border-rose-200 text-[11px] text-slate-700 space-y-1">
+            <span className="font-extrabold text-emerald-700 uppercase tracking-wider block text-[10px]">Your Volunteer Permissions:</span>
+            <p className="font-medium">✓ View and complete personal tasks</p>
+            <p className="font-medium">✓ Check shift timings and assigned stations</p>
+            <p className="font-medium">✓ Escalate blockers to the Risk Radar</p>
+          </div>
+        </div>
+      )}
+
+      {isActionDone && (
+        <div className="rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 border-2 border-teal-200 p-3.5 shadow-sm flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+            ✓
+          </div>
+          <div>
+            <span className="text-xs font-black text-teal-950 block">Task Marked Done!</span>
+            <span className="text-[11px] font-medium text-teal-800">Moved to recently completed archive and progress updated.</span>
+          </div>
+        </div>
+      )}
+
+      {/* BLOCK 3: FORMATTED NARRATIVE SUMMARY */}
+      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90 text-xs text-slate-800 leading-relaxed shadow-xs">
+        {renderColorfulText(raw)}
+      </div>
+    </div>
+  );
+}
+
 export default function MyTasks({ currentUser = INITIAL_VOLUNTEER, onSwitchView }) {
   const [user] = useState(currentUser);
   const [announcements] = useState(INITIAL_ANNOUNCEMENTS);
@@ -229,7 +477,14 @@ export default function MyTasks({ currentUser = INITIAL_VOLUNTEER, onSwitchView 
     }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const chatBottomRef = useRef(null);
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (copilotOpen && chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, copilotOpen]);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -791,12 +1046,15 @@ export default function MyTasks({ currentUser = INITIAL_VOLUNTEER, onSwitchView 
               <button onClick={() => setCopilotOpen(false)} className="text-slate-400 hover:text-black">✕</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[200px]">
+            <div className="flex-1 overflow-y-auto space-y-4 min-h-[240px] max-h-[50vh] pr-1">
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`p-3 rounded-xl text-xs ${msg.sender === 'user' ? 'bg-black text-white ml-8' : 'bg-slate-100 mr-8'}`}>
-                  {msg.text}
-                </div>
+                <AiMessageBubble
+                  key={i}
+                  msg={msg}
+                  onAction={prompt => handleSendChat(prompt)}
+                />
               ))}
+              <div ref={chatBottomRef} />
             </div>
 
             <div className="flex flex-wrap gap-1.5">

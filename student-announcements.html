@@ -1455,6 +1455,98 @@
     }
 
     /* ══════════════════════════════════════════════════════════
+       COLORFUL RICH TEXT PARSER
+       ══════════════════════════════════════════════════════════ */
+    function renderColorfulText(text) {
+      if (!text) return null;
+      const parts = text.split(/(\*\*.*?\*\*|".*?")/g);
+      return parts.map((part, idx) => {
+        if (!part) return null;
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const content = part.slice(2, -2);
+          const lower = content.toLowerCase();
+          if (lower.includes('live') || lower.includes('registration') || lower.includes('announced') || lower.includes('hackathon') || lower.includes('technova')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('deadline') || lower.includes('urgent') || lower.includes('closing') || lower.includes('important')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-rose-100 text-rose-950 border border-rose-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-indigo-100 text-indigo-950 border border-indigo-300 shadow-2xs">
+              {content}
+            </span>
+          );
+        } else if (part.startsWith('"') && part.endsWith('"')) {
+          const quote = part.slice(1, -1);
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 italic">
+              "{quote}"
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ANNOUNCEMENT AI CHAT BUBBLE (Multi-Block & Colorful)
+       ══════════════════════════════════════════════════════════ */
+    function AnnouncementAiBubble({ msg }) {
+      if (msg.role === 'user') {
+        return (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-2xl rounded-br-none p-3.5 text-xs font-semibold bg-black text-white shadow-md">
+              {msg.text}
+            </div>
+          </div>
+        );
+      }
+
+      const raw = msg.text || '';
+      const lower = raw.toLowerCase();
+
+      const isLiveEvent = lower.includes('live') || lower.includes('technova') || lower.includes('registration');
+      const isDeadline = lower.includes('deadline') || lower.includes('closes');
+
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[92%] space-y-2">
+            <div className="flex items-center gap-1.5">
+              {isLiveEvent && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span>🚀 Active Broadcast Alert</span>
+                </span>
+              )}
+              {isDeadline && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-800 border border-rose-200">
+                  <span>⏰ Registration Deadline Notice</span>
+                </span>
+              )}
+              {!isLiveEvent && !isDeadline && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  <span className="text-indigo-600">✦</span>
+                  <span>Campus Feed Intelligence</span>
+                </span>
+              )}
+            </div>
+
+            <div className="bg-white border border-[#E2E8F0] text-slate-900 rounded-2xl rounded-bl-none shadow-xs p-3.5 text-xs leading-relaxed">
+              {renderColorfulText(raw)}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════════════════════════
        MAIN STUDENT ANNOUNCEMENTS APPLICATION
        ══════════════════════════════════════════════════════════ */
     function StudentAnnouncementsApp() {
@@ -1925,13 +2017,7 @@
 
                   <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
                     {copilotMessages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
-                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-sm'
-                        }`}>
-                          {m.text}
-                        </div>
-                      </div>
+                      <AnnouncementAiBubble key={i} msg={m} />
                     ))}
                     {copilotLoading && (
                       <div className="flex justify-start">

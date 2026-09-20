@@ -1131,6 +1131,179 @@
       );
     }
 
+    /* ══════════════════════════════════════════════════════════
+       COLORFUL RICH TEXT PARSER
+       ══════════════════════════════════════════════════════════ */
+    function renderColorfulText(text) {
+      if (!text) return null;
+      const parts = text.split(/(\*\*.*?\*\*|".*?")/g);
+      return parts.map((part, idx) => {
+        if (!part) return null;
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const content = part.slice(2, -2);
+          const lower = content.toLowerCase();
+          if (lower.includes('completed') || lower.includes('done') || lower.includes('planned') || lower.includes('budget') || lower.includes('$')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('risk') || lower.includes('critical') || lower.includes('blocked') || lower.includes('pending') || lower.includes('variance')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-rose-100 text-rose-950 border border-rose-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('volunteer') || lower.includes('task') || lower.includes('status') || lower.includes('review')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-indigo-100 text-indigo-950 border border-indigo-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-slate-200 text-slate-900 border border-slate-300">
+              {content}
+            </span>
+          );
+        } else if (part.startsWith('"') && part.endsWith('"')) {
+          const quote = part.slice(1, -1);
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 italic">
+              "{quote}"
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DASHBOARD AI CHAT BUBBLE (Multi-Block & Colorful)
+       ══════════════════════════════════════════════════════════ */
+    function DashboardAiBubble({ msg }) {
+      if (msg.role === 'user') {
+        return (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-2xl rounded-br-none p-3.5 text-xs font-semibold bg-black text-white shadow-md">
+              {msg.text}
+            </div>
+          </div>
+        );
+      }
+
+      const raw = msg.text || '';
+      const lower = raw.toLowerCase();
+
+      const isTasks = lower.includes('task') || lower.includes('completed') || lower.includes('in-progress');
+      const isVolunteers = lower.includes('volunteer') || lower.includes('workload') || lower.includes('rebalance');
+      const isBudget = lower.includes('budget') || lower.includes('spending') || lower.includes('$12,000');
+      const isRisk = lower.includes('risk') || lower.includes('critical') || lower.includes('auditorium ac');
+
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[92%] space-y-2">
+            {/* BLOCK 1: CATEGORY STATUS PILL */}
+            <div className="flex items-center gap-1.5">
+              {isTasks && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  <span>📊 Task Operations Radar</span>
+                </span>
+              )}
+              {isVolunteers && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-800 border border-violet-200">
+                  <span>👥 Volunteer Resource Load</span>
+                </span>
+              )}
+              {isBudget && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span>💰 Financial Analytics</span>
+                </span>
+              )}
+              {isRisk && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-800 border border-rose-200">
+                  <span>⚠️ Risk Radar Alert</span>
+                </span>
+              )}
+              {!isTasks && !isVolunteers && !isBudget && !isRisk && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-900 border border-cyan-200">
+                  <span className="text-cyan-600">✦</span>
+                  <span>Executive Copilot</span>
+                </span>
+              )}
+            </div>
+
+            {/* BLOCK 2: HERO METRICS CARD */}
+            {isTasks && (
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-slate-50 to-white border-2 border-indigo-200 p-3 shadow-xs space-y-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
+                  <div className="bg-white rounded-lg p-2 border border-emerald-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-emerald-700 block">Done</span>
+                    <span className="text-sm font-black text-emerald-950">41</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-blue-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-blue-700 block">Doing</span>
+                    <span className="text-sm font-black text-blue-950">14</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-amber-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-amber-700 block">Review</span>
+                    <span className="text-sm font-black text-amber-950">5</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-2 border border-rose-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-rose-700 block">Blocked</span>
+                    <span className="text-sm font-black text-rose-950">2</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isVolunteers && (
+              <div className="rounded-2xl bg-gradient-to-br from-violet-50 via-slate-50 to-white border-2 border-violet-200 p-3 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-violet-950">👥 22 Active Volunteers</span>
+                  <span className="text-[10px] font-bold bg-violet-200/80 text-violet-900 px-2 py-0.5 rounded-full">3.1 tasks/member</span>
+                </div>
+                <div className="bg-white rounded-xl p-2 border border-violet-100 text-[11px] text-slate-700">
+                  💡 Recommendation: Shift 2 tasks from Priya P. to Tanvi G. to equalize workload before main day.
+                </div>
+              </div>
+            )}
+
+            {isBudget && (
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-white border-2 border-emerald-200 p-3 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-emerald-950">TechNova 2026 Planned: $12,000</span>
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">+7.7% Var</span>
+                </div>
+                <div className="bg-white rounded-xl p-2 border border-emerald-100 text-[11px] text-slate-700">
+                  Audio & stage committed at $3,500. $4,500 currently remaining in contingency pool.
+                </div>
+              </div>
+            )}
+
+            {isRisk && (
+              <div className="rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 border-2 border-rose-200 p-3 shadow-xs space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-black text-rose-950">
+                  <span>🚨</span>
+                  <span>Auditorium AC & Electrical Line Clearance</span>
+                </div>
+                <div className="bg-white rounded-xl p-2 border border-rose-200 text-[11px] text-slate-700">
+                  Form 4B approval pending with Campus Estate Office. Escalated to priority tracking.
+                </div>
+              </div>
+            )}
+
+            {/* BLOCK 3: FORMATTED NARRATIVE */}
+            <div className="bg-white border border-[#E2E8F0] text-slate-900 rounded-2xl rounded-bl-none shadow-xs p-3.5 text-xs leading-relaxed">
+              {renderColorfulText(raw)}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     /* ─── 6. DASHBOARD ROOT ─────────────────────────────────────────────────── */
     function Dashboard() {
       const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1463,13 +1636,7 @@
 
                   <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
                     {messages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
-                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-xs'
-                        }`}>
-                          {m.text}
-                        </div>
-                      </div>
+                      <DashboardAiBubble key={i} msg={m} />
                     ))}
                     {copilotLoading && (
                       <div className="flex justify-start">

@@ -1118,7 +1118,140 @@
         setTimeout(() => setToastMsg(''), 4000);
       };
 
-      function generateClientCopilotReply(rawQuery, eventsList = [], user = null) {
+    /* ══════════════════════════════════════════════════════════
+       COLORFUL RICH TEXT PARSER
+       ══════════════════════════════════════════════════════════ */
+    function renderColorfulText(text) {
+      if (!text) return null;
+      const parts = text.split(/(\*\*.*?\*\*|".*?")/g);
+      return parts.map((part, idx) => {
+        if (!part) return null;
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const content = part.slice(2, -2);
+          const lower = content.toLowerCase();
+          if (lower.includes('sep') || lower.includes('oct') || lower.includes('nov') || lower.includes('am') || lower.includes('pm') || lower.includes('schedule') || lower.includes('live') || lower.includes('upcoming')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('hall') || lower.includes('auditorium') || lower.includes('lab') || lower.includes('center') || lower.includes('room') || lower.includes('venue')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          if (lower.includes('rsvp') || lower.includes('ticket') || lower.includes('confirmed') || lower.includes('register')) {
+            return (
+              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs">
+                {content}
+              </span>
+            );
+          }
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-black bg-indigo-100 text-indigo-950 border border-indigo-300 shadow-2xs">
+              {content}
+            </span>
+          );
+        } else if (part.startsWith('"') && part.endsWith('"')) {
+          const quote = part.slice(1, -1);
+          return (
+            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 my-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 italic">
+              "{quote}"
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       STUDENT AI CHAT BUBBLE (Multi-Block & Colorful)
+       ══════════════════════════════════════════════════════════ */
+    function UserAiBubble({ msg }) {
+      if (msg.role === 'user') {
+        return (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-2xl rounded-br-none p-3.5 text-xs font-semibold bg-black text-white shadow-md">
+              {msg.text}
+            </div>
+          </div>
+        );
+      }
+
+      const raw = msg.text || '';
+      const lower = raw.toLowerCase();
+
+      const isSchedule = lower.includes('scheduled') || lower.includes('date:') || lower.includes('time:') || lower.includes('am') || lower.includes('pm');
+      const isVenue = lower.includes('held at') || lower.includes('venue:') || lower.includes('auditorium');
+      const isRsvp = lower.includes('rsvp') || lower.includes('reserve a spot') || lower.includes('ticket');
+      const isList = raw.includes('•');
+
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[92%] space-y-2">
+            {/* BLOCK 1: CATEGORY STATUS PILL */}
+            <div className="flex items-center gap-1.5">
+              {isSchedule && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span>📅 Event Schedule & Timing</span>
+                </span>
+              )}
+              {isVenue && !isSchedule && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-800 border border-cyan-200">
+                  <span>📍 Campus Venue & Wayfinding</span>
+                </span>
+              )}
+              {isRsvp && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                  <span>🎟️ Spot Reservation & RSVP</span>
+                </span>
+              )}
+              {isList && !isSchedule && !isRsvp && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  <span>🌟 Featured Campus Events</span>
+                </span>
+              )}
+              {!isSchedule && !isVenue && !isRsvp && !isList && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                  <span className="text-indigo-600">✦</span>
+                  <span>Planova Assistant</span>
+                </span>
+              )}
+            </div>
+
+            {/* BLOCK 2: HERO CARD IF BULLET LIST */}
+            {isList ? (
+              <div className="space-y-1.5">
+                {raw.split('\n').filter(line => line.trim().length > 0).map((line, lIdx) => {
+                  if (line.trim().startsWith('•')) {
+                    return (
+                      <div key={lIdx} className="bg-white border-l-4 border-indigo-500 border border-slate-200 rounded-xl p-2.5 text-xs shadow-2xs">
+                        {renderColorfulText(line)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={lIdx} className="bg-white border border-[#E2E8F0] text-slate-800 rounded-xl p-2.5 text-xs leading-relaxed">
+                      {renderColorfulText(line)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* BLOCK 3: FORMATTED NARRATIVE */
+              <div className="bg-white border border-[#E2E8F0] text-slate-900 rounded-2xl rounded-bl-none shadow-xs p-3.5 text-xs leading-relaxed">
+                {renderColorfulText(raw)}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function generateClientCopilotReply(rawQuery, eventsList = [], user = null) {
         const q = String(rawQuery || '').toLowerCase().trim();
         const events = Array.isArray(eventsList) ? eventsList : [];
 
@@ -1301,13 +1434,7 @@
 
                   <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F8FAFC]">
                     {messages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
-                          m.role === 'user' ? 'bg-black text-white rounded-br-none' : 'bg-white border border-[#E2E8F0] text-slate-900 rounded-bl-none shadow-sm'
-                        }`}>
-                          {m.text}
-                        </div>
-                      </div>
+                      <UserAiBubble key={i} msg={m} />
                     ))}
                     {copilotLoading && (
                       <div className="flex justify-start">
