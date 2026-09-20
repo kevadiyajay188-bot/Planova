@@ -1,5 +1,0 @@
-.env
-backend/database/data.json
-backend/database/*.tmp
-node_modules/
-
